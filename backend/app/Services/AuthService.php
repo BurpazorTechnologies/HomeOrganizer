@@ -9,9 +9,6 @@ use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
-    /**
-     * Register a new user
-     */
     public function register(array $data): array
     {
         $user = User::create([
@@ -29,14 +26,11 @@ class AuthService
         ];
     }
 
-    /**
-     * Login user with credentials
-     */
     public function login(array $credentials): array
     {
         if (!Auth::attempt($credentials)) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => ['The provided credentials are incorrect.']
             ]);
         }
 
@@ -74,17 +68,11 @@ class AuthService
         return $user->createToken($name)->plainTextToken;
     }
 
-    /**
-     * Revoke all tokens for user
-     */
     public function revokeAllTokens(User $user): int
     {
         return $user->tokens()->delete();
     }
 
-    /**
-     * Revoke specific token
-     */
     public function revokeToken(User $user, string $tokenId): bool
     {
         return $user->tokens()->where('id', $tokenId)->delete() > 0;

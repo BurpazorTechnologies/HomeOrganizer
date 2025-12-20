@@ -10,7 +10,7 @@ class HomeOrganizerApp extends StatelessWidget {
     return MaterialApp(
       title: 'Home Organizer',
       theme: AppTheme.lightTheme,
-      initialRoute: AppRoutes.login,
+      initialRoute: AppRoutes.startup,
       routes: AppRoutes.routes,
     );
   }
