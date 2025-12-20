@@ -1,7 +1,7 @@
 .PHONY: up up-fg down restart logs queue-worker websocket-server config-generate
 
 # Generate nginx configuration from templates
-config-generate:
+nginx-config-generate:
 	@echo "🔧 Generating nginx configuration..."
 	chmod +x ./_docker/nginx/generate-config.sh
 	PROJECT_ROOT=$(PWD) ./_docker/nginx/generate-config.sh
@@ -30,7 +30,7 @@ down:
 restart: down up
 
 # Regenerate config and restart services (use when you change nginx config)
-reconfig: config-generate restart
+nginx-reconfig: config-generate restart
 
 logs:
 	docker compose logs -f

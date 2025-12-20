@@ -1,7 +1,7 @@
 .PHONY: ssl-generate ssl-recreate ssl-setup setup-all
 
 # Generate SSL certificates
-ssl-generate:
+nginx-ssl-generate:
 	@echo "🔐 Generating SSL certificates..."
 	@echo "   Domain: $(APP_URL)"
 	chmod +x ./_docker/nginx/generate-ssl.sh
@@ -9,7 +9,7 @@ ssl-generate:
 	@echo "✅ SSL certificates generated successfully"
 
 # Recreate SSL certificates (useful for domain changes)
-ssl-recreate:
+nginx-ssl-recreate:
 	@echo "🔄 Recreating SSL certificates..."
 	@echo "   Domain: $(APP_URL)"
 	@echo "   Removing old certificates..."
@@ -21,9 +21,9 @@ ssl-recreate:
 	@echo "💡 Run 'make restart' to apply new certificates"
 
 # Setup SSL (make executable and generate)
-ssl-setup: ssl-generate
+nginx-ssl-setup: ssl-generate
 
 # Complete local development setup
-setup-all: ssl-setup
+nginx-setup-all: ssl-setup
 	@echo "🚀 Local development setup complete!"
 	@echo "Run 'make up' to start all services"
