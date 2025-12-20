@@ -1,4 +1,4 @@
-.PHONY: up up-fg down restart logs queue-worker websocket-server config-generate
+.PHONY: up up-fg down restart logs queue-worker config-generate
 
 # Generate nginx configuration from templates
 nginx-config-generate:

@@ -2,13 +2,12 @@
 
 build:
 	@echo "🔨 Building all services..."
-	docker compose build
+	docker compose --env-file .compose.local.env build
 	@echo "✅ Build complete"
 
 clean:
 	@echo "🧹 Cleaning up..."
 	docker compose down -v --remove-orphans
-	docker system prune -f
 	@echo "✅ Cleanup complete"
 
 test:
@@ -38,7 +37,7 @@ bash-backend:
 bash-database:
 	@echo "🐚 Entering database service bash shell..."
 	docker compose exec database bash
-	
+
 bash-proxy:
 	@echo "🐚 Entering proxy service bash shell..."
 	docker compose exec proxy-server bash
