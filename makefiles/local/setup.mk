@@ -1,6 +1,3 @@
-# Local Development Setup Commands
-# This file contains setup-related commands for local development
-
 .PHONY: ssl-generate ssl-recreate ssl-setup setup-all
 
 # Generate SSL certificates

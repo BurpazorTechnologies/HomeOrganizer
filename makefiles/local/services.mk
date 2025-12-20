@@ -1,6 +1,3 @@
-# Local Development Services Commands
-# This file contains commands for managing services (queues, websockets, etc.)
-
 .PHONY: up up-fg down restart logs queue-worker websocket-server config-generate
 
 # Generate nginx configuration from templates
@@ -10,7 +7,6 @@ config-generate:
 	PROJECT_ROOT=$(PWD) ./_docker/nginx/generate-config.sh
 	@echo "✅ Configuration generated"
 
-# Start all services
 up:
 	@echo "🚀 Starting all services..."
 	@echo "   APP_URL: $(APP_URL)"
@@ -26,30 +22,21 @@ up-fg:
 	@echo "   Environment: $(APP_ENV)"
 	docker compose --env-file .compose.local.env up
 
-# Stop all services
 down:
 	@echo "🛑 Stopping all services..."
 	docker compose down
 	@echo "✅ All services stopped"
 
-# Restart all services
 restart: down up
 
 # Regenerate config and restart services (use when you change nginx config)
 reconfig: config-generate restart
 
-# View logs
 logs:
 	docker compose logs -f
 
-# Start queue worker (placeholder for future implementation)
+# Start queue worker
 queue-worker:
 	@echo "⚡ Starting queue worker..."
 	@echo "TODO: Implement queue worker command"
 	# docker compose exec backend php artisan queue:work
-
-# Start websocket server (placeholder for future implementation)
-websocket-server:
-	@echo "🔌 Starting websocket server..."
-	@echo "TODO: Implement websocket server command"
-	# docker compose exec backend php artisan websockets:serve
