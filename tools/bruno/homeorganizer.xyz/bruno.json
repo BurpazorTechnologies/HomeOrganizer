@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "homeorganizer.xyz",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
