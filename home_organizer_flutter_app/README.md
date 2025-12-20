@@ -9,4 +9,7 @@ flutter run
 
 // hot reload
 r
+
+// Hot restart (recompiles)
+R
 ```

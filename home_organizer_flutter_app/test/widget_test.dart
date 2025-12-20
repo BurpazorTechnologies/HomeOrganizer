@@ -8,23 +8,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:home_organizer_flutter_app/main.dart';
+import 'package:home_organizer_flutter_app/features/auth/presentation/login_page.dart';
+import 'package:home_organizer_flutter_app/features/version/data/version_service.dart';
+
+class _FakeVersionService extends VersionService {
+  @override
+  Future<String> getVersion() async => 'test-version';
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Login screen smoke test', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LoginPage(versionService: _FakeVersionService()),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Home Organizer'), findsOneWidget);
+    expect(find.text('Backend version: test-version'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    final fields = find.byType(TextFormField);
+    expect(fields, findsNWidgets(2));
+
+    await tester.enterText(fields.first, 'test@example.com');
+    await tester.enterText(fields.at(1), 'password');
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
     await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
   });
 }
