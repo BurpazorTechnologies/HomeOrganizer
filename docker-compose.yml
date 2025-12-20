@@ -28,7 +28,7 @@ services:
       args:
         WWWGROUP: ${GID}
         WWWUSER: ${UID}
-    container_name: homeorganizer-backend
+    container_name: ${BACKEND_CONTAINER_NAME}
     user: "${UID}:${GID}"
     environment:
       <<: *common-env

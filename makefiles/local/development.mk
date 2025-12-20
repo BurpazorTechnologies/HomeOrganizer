@@ -13,11 +13,7 @@ clean:
 test:
 	@echo "🧪 Running tests..."
 	@echo "TODO: Implement test commands"
-	# docker compose exec backend php artisan test
-lint:
-	@echo "🔍 Running linters..."
-	@echo "TODO: Implement linting commands"
-	# docker compose exec frontend npm run lint
+	docker compose exec backend php artisan test
 
 format:
 	@echo "✨ Formatting code..."
