@@ -80,18 +80,4 @@ class AuthController extends Controller
             'message' => 'Logged out from all devices successfully',
         ]);
     }
-
-    /**
-     * Get user abilities (roles and permissions) for SPA
-     */
-    public function abilities(Request $request): JsonResponse
-    {
-        $user = $request->user();
-
-        return response()->json([
-            'user' => new UserResource($user),
-            'roles' => $user->getRoleNames(),
-            'permissions' => $user->getAllPermissions()->pluck('name'),
-        ]);
-    }
 }

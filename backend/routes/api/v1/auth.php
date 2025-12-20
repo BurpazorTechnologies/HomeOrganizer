@@ -14,7 +14,6 @@ Route::prefix('auth')->group(function () {
     // Protected routes
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/user/me', [AuthController::class, 'me']);
-        Route::get('/abilities', [AuthController::class, 'abilities']);
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::post('/logout-all', [AuthController::class, 'logoutAll']);
     });

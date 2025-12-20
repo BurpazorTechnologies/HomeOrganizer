@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Auth;
 
 class UtilityController extends Controller
 {
-
     public function me(): View
     {
         $user = Auth::user();

@@ -11,7 +11,7 @@ up:
 	@echo "🚀 Starting all services..."
 	@echo "   APP_URL: $(APP_URL)"
 	@echo "   Environment: $(APP_ENV)"
-	docker compose up -d
+	docker compose --env-file .compose.local.env up -d
 	@echo "✅ All services started"
 
 # Start all services in foreground (show live status) using .compose.local.env
@@ -24,7 +24,7 @@ up-fg:
 
 down:
 	@echo "🛑 Stopping all services..."
-	docker compose down
+	docker compose --env-file .compose.local.env down
 	@echo "✅ All services stopped"
 
 restart: down up
@@ -33,10 +33,10 @@ restart: down up
 nginx-reconfig: config-generate restart
 
 logs:
-	docker compose logs -f
+	docker compose --env-file .compose.local.env logs -f
 
 # Start queue worker
 queue-worker:
 	@echo "⚡ Starting queue worker..."
 	@echo "TODO: Implement queue worker command"
-	# docker compose exec backend php artisan queue:work
+	# docker compose --env-file .compose.local.env exec backend php artisan queue:work

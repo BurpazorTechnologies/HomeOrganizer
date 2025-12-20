@@ -1,0 +1,20 @@
+meta {
+  name: Version
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{host}}/api/version
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
