@@ -1,0 +1,55 @@
+# Local Development Services Commands
+# This file contains commands for managing services (queues, websockets, etc.)
+
+.PHONY: up up-fg down restart logs queue-worker websocket-server config-generate
+
+# Generate nginx configuration from templates
+config-generate:
+	@echo "🔧 Generating nginx configuration..."
+	chmod +x ./_docker/nginx/generate-config.sh
+	PROJECT_ROOT=$(PWD) ./_docker/nginx/generate-config.sh
+	@echo "✅ Configuration generated"
+
+# Start all services
+up:
+	@echo "🚀 Starting all services..."
+	@echo "   APP_URL: $(APP_URL)"
+	@echo "   Environment: $(APP_ENV)"
+	docker compose up -d
+	@echo "✅ All services started"
+
+# Start all services in foreground (show live status) using .compose.local.env
+up-fg:
+	@echo "🚀 Starting all services in foreground..."
+	@echo "   Using env file: .compose.local.env"
+	@echo "   APP_URL: $(APP_URL)"
+	@echo "   Environment: $(APP_ENV)"
+	docker compose --env-file .compose.local.env up
+
+# Stop all services
+down:
+	@echo "🛑 Stopping all services..."
+	docker compose down
+	@echo "✅ All services stopped"
+
+# Restart all services
+restart: down up
+
+# Regenerate config and restart services (use when you change nginx config)
+reconfig: config-generate restart
+
+# View logs
+logs:
+	docker compose logs -f
+
+# Start queue worker (placeholder for future implementation)
+queue-worker:
+	@echo "⚡ Starting queue worker..."
+	@echo "TODO: Implement queue worker command"
+	# docker compose exec backend php artisan queue:work
+
+# Start websocket server (placeholder for future implementation)
+websocket-server:
+	@echo "🔌 Starting websocket server..."
+	@echo "TODO: Implement websocket server command"
+	# docker compose exec backend php artisan websockets:serve

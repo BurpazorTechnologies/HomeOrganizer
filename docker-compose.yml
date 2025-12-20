@@ -1,0 +1,119 @@
+x-common-attr: &common-attr
+  init: true
+  restart: unless-stopped
+  networks:
+    - homeorganizer-network
+
+x-common-env: &common-env
+  APP_NAME: ${APP_NAME}
+  APP_URL: ${APP_URL}
+  APP_ENV: ${APP_ENV}
+  DB_HOST: ${DB_HOST}
+  DB_PORT: ${DB_PORT}
+  DB_DATABASE: ${DB_DATABASE}
+  DB_USERNAME: ${DB_USERNAME}
+  DB_PASSWORD: ${DB_PASSWORD}
+  SSL_CERT_FILE: cert.pem
+  SSL_KEY_FILE: key.pem
+  NGINX_HTTP_PORT: 80
+  NGINX_HTTPS_PORT: 443
+  FPM_PORT: 9000
+
+services:
+  backend:
+    <<: *common-attr
+    build:
+      context: .
+      dockerfile: _docker/backend/Dockerfile
+      args:
+        WWWGROUP: ${GID}
+        WWWUSER: ${UID}
+    container_name: homeorganizer-backend
+    user: "${UID}:${GID}"
+    environment:
+      <<: *common-env
+    volumes:
+      - ./backend:/var/www/html
+      - ./_docker/backend/php.ini:/etc/php/8.4/fpm/conf.d/99-laravel.ini:ro
+      - ./_docker/backend/php.ini:/etc/php/8.4/cli/conf.d/99-laravel.ini:ro
+    depends_on:
+      - database
+
+  database:
+    <<: *common-attr
+    image: mysql:8.0
+    container_name: homeorganizer-database
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "no"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./_docker/database/create-db.sh:/docker-entrypoint-initdb.d/create-db.sh:ro
+    ports:
+      - "3306:3306"
+
+  proxy-server:
+    <<: *common-attr
+    image: nginx:latest
+    container_name: homeorganizer-proxy
+    environment:
+      <<: *common-env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./_docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./_docker/nginx/conf/:/etc/nginx/conf.d:ro
+      - ./_docker/nginx/server/:/etc/nginx/sites-available:ro
+      - ./_docker/nginx/ssl/:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+
+  redis:
+    <<: *common-attr
+    image: redis:7-alpine
+    container_name: homeorganizer-redis
+    volumes:
+      - homeorganizer_redis_data:/data
+    ports:
+      - "6379:6379"
+
+  redisinsight:
+    <<: *common-attr
+    image: redislabs/redisinsight:latest
+    container_name: homeorganizer-redisinsight
+    ports:
+      - "5540:5540"
+    volumes:
+      - homeorganizer_redisinsight_data:/data
+
+  mailpit:
+    <<: *common-attr
+    image: axllent/mailpit:latest
+    container_name: homeorganizer-mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    volumes:
+      - homeorganizer_mailpit_data:/data
+
+  adminer:
+    <<: *common-attr
+    image: adminer:latest
+    container_name: homeorganizer-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: database
+
+volumes:
+  mysql_data:
+  homeorganizer_redis_data:
+  homeorganizer_redisinsight_data:
+  homeorganizer_mailpit_data:
+
+networks:
+  homeorganizer-network:
