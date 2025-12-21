@@ -1,0 +1,24 @@
+---
+description: |
+  Testing strategy: unit/widget/integration coverage, mocking rules, and test structure conventions.
+alwaysApply: false
+---
+# Testing
+
+## What to test
+- ✅ Unit: domain usecases, mappers, repositories (mock sources)
+- ✅ Widget: key screens, error/loading states, navigation triggers
+- ✅ Integration: critical user flows (auth, checkout, core workflows)
+
+## Conventions
+- ✅ Arrange/Act/Assert structure
+- ✅ Test names describe behavior, not implementation
+- ✅ Use fakes/fixtures for deterministic tests
+
+## Mocking
+- ✅ Mock external boundaries (API/local storage/time)
+- ✅ Avoid mocking Flutter framework internals
+
+## NEVER
+- ❌ Write tests that depend on real network
+- ❌ Skip error-state tests

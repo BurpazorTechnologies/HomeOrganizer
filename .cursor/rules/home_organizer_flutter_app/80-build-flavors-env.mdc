@@ -1,0 +1,41 @@
+---
+description: |
+  Build flavors and environment configuration using separate Dart entrypoints (local/dev/prod),
+  plus strict rules for AppConfig initialization and safe environment usage.
+alwaysApply: false
+---
+# Environments (local / dev / prod)
+
+## Entrypoint-based environment selection (REQUIRED)
+This app selects its environment via **separate entrypoints**:
+
+- `lib/main_local.dart` (default)
+- `lib/main_dev.dart`
+- `lib/main_prod.dart`
+
+Each entrypoint must set `AppConfig` **before** `runApp()` starts. Environment values live in:
+
+- `lib/config/local.dart`
+- `lib/config/dev.dart`
+- `lib/config/prod.dart`
+
+## Hard rules
+- ✅ All environment-specific values must live only in `lib/config/{local,dev,prod}.dart`
+- ✅ Each entrypoint must:
+  - load the correct config
+  - set `AppConfig` once
+  - then call `runApp(App(...))`
+- ✅ App code must read config **only** via `AppConfig` (or a single injected config provider)
+- ✅ `main.dart` is not used for environment switching unless explicitly required later
+- ✅ Environment must be decided at process start (entrypoint), not at runtime via toggles
+
+## Run (choose one)
+```bash
+# local (default)
+flutter run -t lib/main_local.dart
+
+# dev
+flutter run -t lib/main_dev.dart
+
+# prod
+flutter run -t lib/main_prod.dart

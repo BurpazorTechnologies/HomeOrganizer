@@ -1,0 +1,26 @@
+---
+description: |
+  go_router routing rules: centralized routes, typed params, deep links, and guarded navigation.
+alwaysApply: false
+---
+# Navigation & Routing (go_router)
+
+## Centralize routing
+- ✅ Define routes in `app/router/`
+- ✅ Route paths are constants; avoid magic strings scattered in UI
+
+## Params
+- ✅ Prefer typed route parameters and validation
+- ✅ Handle missing/invalid params with safe fallback pages
+
+## Guards
+- ✅ Auth/onboarding guards live in router redirect logic
+- ✅ UI does not contain auth gate logic per screen (keep consistent)
+
+## Navigation triggers
+- ✅ Navigation is triggered by UI reacting to state/effects
+- ❌ Do not call navigation in build
+
+## NEVER
+- ❌ Push routes with hardcoded strings in random widgets
+- ❌ Hide deep link handling inside feature widgets

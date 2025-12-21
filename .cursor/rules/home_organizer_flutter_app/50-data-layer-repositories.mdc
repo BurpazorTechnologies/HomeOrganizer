@@ -1,0 +1,28 @@
+---
+description: |
+  Repository pattern rules: domain interfaces, data implementations, mapping, caching, and testability.
+alwaysApply: false
+---
+# Data Layer & Repositories
+
+## Interfaces
+- ✅ Repository interfaces live in `domain/`
+- ✅ Implementations live in `data/`
+
+## Mapping
+- ✅ Repository returns domain entities/value objects only
+- ✅ Map exceptions to `Failure` (domain) or typed result
+
+## Caching
+- ✅ If caching exists, document:
+  - TTL
+  - invalidation
+  - stale-while-revalidate behavior
+
+## Testability
+- ✅ Repositories are mockable (depend on interfaces)
+- ✅ API clients and local sources are separated for unit tests
+
+## NEVER
+- ❌ Return DTOs to presentation
+- ❌ Throw Dio exceptions beyond data layer

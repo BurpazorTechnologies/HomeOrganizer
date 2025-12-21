@@ -1,0 +1,26 @@
+---
+description: |
+  Local storage rules: secure storage, prefs, DB, offline strategy, and data lifecycle.
+alwaysApply: false
+---
+# Storage, Cache, Offline
+
+## Storage choices
+- ✅ Shared prefs: small non-sensitive flags/settings
+- ✅ Secure storage: tokens/credentials
+- ✅ DB (Hive/Isar/SQLite): structured offline data (pick one and standardize)
+
+## Offline strategy
+- ✅ Define per feature:
+  - cache keying
+  - sync strategy
+  - conflict handling
+  - error states when offline
+
+## Data lifecycle
+- ✅ Clear sensitive data on logout
+- ✅ Provide migrations strategy for DB schema changes
+
+## NEVER
+- ❌ Store secrets in shared prefs
+- ❌ Scatter storage calls in widgets

@@ -1,88 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:home_organizer_flutter_app/app/app_routes.dart';
-import 'package:home_organizer_flutter_app/core/logging/app_logger.dart';
-import 'package:home_organizer_flutter_app/features/auth/data/auth_service.dart';
-import 'package:home_organizer_flutter_app/features/version/data/version_service.dart';
-import 'package:home_organizer_flutter_app/services/token_storage.dart';
+import 'package:home_organizer_flutter_app/l10n/gen/app_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:home_organizer_flutter_app/app/theme/app_tokens.dart';
+import 'package:home_organizer_flutter_app/features/auth/presentation/login_controller.dart';
+import 'package:home_organizer_flutter_app/features/version/version.dart';
+import 'package:home_organizer_flutter_app/shared/errors/failure.dart';
+import 'package:home_organizer_flutter_app/shared/validators/email_validator.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({
-    super.key,
-    this.versionService,
-    this.authService,
-    this.tokenStorage,
-  });
-
-  final VersionService? versionService;
-  final AuthService? authService;
-  final TokenStorage? tokenStorage;
+class LoginPage extends ConsumerStatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  late final VersionService _versionService;
-  late final bool _ownsVersionService;
-
-  late final AuthService _authService;
-  late final bool _ownsAuthService;
-
-  late final TokenStorage _tokenStorage;
-  late final bool _ownsTokenStorage;
-
-  String? _backendVersion;
-  bool _backendVersionLoading = true;
-
   bool _obscurePassword = true;
 
-  bool _loginLoading = false;
-  String? _loginErrorText;
-
-  @override
-  void initState() {
-    super.initState();
-    _ownsVersionService = widget.versionService == null;
-    _versionService = widget.versionService ?? VersionService();
-    _loadBackendVersion();
-
-    _ownsAuthService = widget.authService == null;
-    _authService = widget.authService ?? AuthService();
-
-    _ownsTokenStorage = widget.tokenStorage == null;
-    _tokenStorage = widget.tokenStorage ?? TokenStorage();
-  }
-
-  Future<void> _loadBackendVersion() async {
-    try {
-      final version = await _versionService.getVersion();
-      if (!mounted) return;
-      setState(() {
-        _backendVersion = version;
-        _backendVersionLoading = false;
-      });
-    } catch (e) {
-      // Keep the UI simple: just show "unavailable".
-      AppLogger.warn('Backend version unavailable: $e');
-      if (!mounted) return;
-      setState(() {
-        _backendVersion = null;
-        _backendVersionLoading = false;
-      });
-    }
-  }
-
   void _onLoginPressed() {
-    _login();
-  }
-
-  Future<void> _login() async {
-    if (_loginLoading) return;
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return;
 
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
@@ -90,79 +32,55 @@ class _LoginPageState extends State<LoginPage> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    setState(() {
-      _loginLoading = true;
-      _loginErrorText = null;
-    });
-
-    try {
-      final response = await _authService.login(
-        email: email,
-        password: password,
-      );
-
-      await _tokenStorage.saveToken(response.token);
-      if (!mounted) return;
-
-      Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
-    } on InvalidCredentialsException {
-      if (!mounted) return;
-      setState(() {
-        _loginErrorText = 'Invalid login credentials';
-        _loginLoading = false;
-      });
-    } catch (e, st) {
-      AppLogger.error('Login failed', error: e, stackTrace: st);
-      if (!mounted) return;
-      setState(() {
-        _loginErrorText = 'Login failed. Please try again.';
-        _loginLoading = false;
-      });
-    }
+    ref
+        .read(loginControllerProvider.notifier)
+        .login(email: email, password: password);
   }
 
   @override
   void dispose() {
-    if (_ownsVersionService) {
-      _versionService.dispose();
-    }
-    if (_ownsAuthService) {
-      _authService.dispose();
-    }
-    if (_ownsTokenStorage) {}
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  Widget _buildBackendVersion(BuildContext context) {
-    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        );
-
-    final text = _backendVersionLoading
-        ? 'Backend version: loading...'
-        : _backendVersion == null
-            ? 'Backend version: unavailable'
-            : 'Backend version: $_backendVersion';
-
-    return Text(
-      text,
-      style: style,
-      textAlign: TextAlign.center,
-    );
+  String? _loginErrorText(AppLocalizations l10n, Object error) {
+    if (error is Failure) {
+      return error.when(
+        network: (message, statusCode) {
+          if (statusCode == 429) return l10n.authLoginTooManyAttempts;
+          return l10n.authLoginFailedGeneric;
+        },
+        auth: (_) => l10n.authLoginInvalidCredentials,
+        validation: (_) => l10n.authLoginInvalidCredentials,
+        unexpected: (_) => l10n.authLoginFailedGeneric,
+      );
+    }
+    return l10n.authLoginFailedGeneric;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const SizedBox.shrink();
+    }
+
+    final tokens = context.tokens;
+    final loginState = ref.watch(loginControllerProvider);
+    final loginLoading = loginState.isLoading;
+    final loginError = loginState.whenOrNull(
+      error: (error, _) => _loginErrorText(l10n, error),
+    );
+
+    final backendVersion = ref.watch(backendVersionProvider);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login'),
-      ),
+      appBar: AppBar(title: Text(l10n.authLoginTitle)),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(tokens.spacingM),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: AutofillGroup(
@@ -173,35 +91,42 @@ class _LoginPageState extends State<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Home Organizer',
+                        l10n.appTitle,
                         style: Theme.of(context).textTheme.headlineMedium,
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: tokens.spacingL),
                       TextFormField(
                         controller: _emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
+                        decoration: InputDecoration(
+                          labelText: l10n.authEmailLabel,
                         ),
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         autofillHints: const [AutofillHints.email],
                         validator: (value) {
-                          final v = (value ?? '').trim();
-                          if (v.isEmpty) return 'Email is required';
-                          if (!v.contains('@')) return 'Enter a valid email';
+                          final v = (value ?? '');
+                          if (v.trim().isEmpty) {
+                            return l10n.authEmailRequired;
+                          }
+                          if (!EmailValidator.isValid(v)) {
+                            return l10n.authEmailInvalid;
+                          }
                           return null;
                         },
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: tokens.spacingS + 4),
                       TextFormField(
                         controller: _passwordController,
                         decoration: InputDecoration(
-                          labelText: 'Password',
+                          labelText: l10n.authPasswordLabel,
                           suffixIcon: IconButton(
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
+                            tooltip: _obscurePassword
+                                ? l10n.authPasswordVisibilityShow
+                                : l10n.authPasswordVisibilityHide,
+                            onPressed: () => setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            }),
                             icon: Icon(
                               _obscurePassword
                                   ? Icons.visibility
@@ -215,26 +140,26 @@ class _LoginPageState extends State<LoginPage> {
                         onFieldSubmitted: (_) => _onLoginPressed(),
                         validator: (value) {
                           if ((value ?? '').isEmpty) {
-                            return 'Password is required';
+                            return l10n.authPasswordRequired;
                           }
                           return null;
                         },
                       ),
-                      const SizedBox(height: 20),
-                      if (_loginErrorText != null) ...[
+                      SizedBox(height: tokens.spacingM + 4),
+                      if (loginError != null) ...[
                         Text(
-                          _loginErrorText!,
+                          loginError,
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.error,
                             fontWeight: FontWeight.w600,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: tokens.spacingS + 4),
                       ],
                       ElevatedButton(
-                        onPressed: _loginLoading ? null : _onLoginPressed,
-                        child: _loginLoading
+                        onPressed: loginLoading ? null : _onLoginPressed,
+                        child: loginLoading
                             ? const SizedBox(
                                 height: 18,
                                 width: 18,
@@ -242,10 +167,10 @@ class _LoginPageState extends State<LoginPage> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text('Login'),
+                            : Text(l10n.authLoginButton),
                       ),
-                      const SizedBox(height: 16),
-                      _buildBackendVersion(context),
+                      SizedBox(height: tokens.spacingM),
+                      _BackendVersionText(value: backendVersion),
                     ],
                   ),
                 ),
@@ -258,4 +183,26 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
+class _BackendVersionText extends StatelessWidget {
+  const _BackendVersionText({required this.value});
 
+  final AsyncValue<String> value;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
+
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+
+    final text = value.when(
+      data: (v) => l10n.versionValue(v),
+      loading: () => l10n.versionLoading,
+      error: (error, stackTrace) => l10n.versionUnavailable,
+    );
+
+    return Text(text, style: style, textAlign: TextAlign.center);
+  }
+}

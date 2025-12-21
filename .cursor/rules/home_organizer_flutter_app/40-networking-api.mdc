@@ -1,0 +1,31 @@
+---
+description: |
+  Networking rules using Dio: single client, interceptors, typed errors, timeouts, retries, and cancellation.
+alwaysApply: false
+---
+# Networking (Dio)
+
+## Client setup
+- ✅ One Dio instance configured in `app/di/` (or equivalent)
+- ✅ Set:
+  - connect/receive/send timeouts
+  - baseUrl per flavor
+  - common headers
+
+## Interceptors
+- ✅ Auth token injection
+- ✅ Request ID / correlation
+- ✅ Safe logging (no secrets/PII)
+- ✅ Error mapping into typed failures
+
+## DTO + mapping
+- ✅ Decode to DTOs, then map to domain entities
+- ✅ Domain layer must not depend on Dio types
+
+## Cancellation
+- ✅ Use CancelToken for cancelable requests (search/typeahead)
+
+## NEVER
+- ❌ Call Dio directly from widgets
+- ❌ Return raw JSON maps from repositories
+- ❌ Swallow network errors; always map and surface appropriately

@@ -1,0 +1,28 @@
+---
+description: |
+  UI performance rules: minimize rebuild scope, avoid expensive work in build, and handle lists correctly.
+alwaysApply: false
+---
+# UI Performance & Rebuild Rules
+
+## Rebuild scope
+- ✅ Keep `Consumer`/`ref.watch` as low as possible in the widget tree
+- ✅ Split large screens into smaller widgets to reduce rebuild blast radius
+- ✅ Use selectors (`select`) for watching small slices of state
+
+## Lists
+- ✅ Use `ListView.builder` / `SliverList` for large lists
+- ✅ Keep list item widgets cheap and mostly const
+- ✅ Avoid measuring/layout hacks (no unnecessary IntrinsicHeight/Width)
+
+## Images
+- ✅ Use caching/network image strategy (document package choice)
+- ✅ Provide placeholders and error states
+
+## Async UI
+- ✅ Prefer `AsyncValue` patterns (loading/error/data)
+- ✅ Don’t re-fetch on every rebuild (cache/keepAlive as needed)
+
+## NEVER
+- ❌ Do expensive parsing/JSON decoding in build
+- ❌ Use nested scroll views without clear reason

@@ -7,5 +7,3 @@ const AppConfig devConfig = AppConfig(
   environment: AppEnvironment.dev,
   apiBaseUrl: 'https://dev.homeorganizer.xyz',
 );
-
-

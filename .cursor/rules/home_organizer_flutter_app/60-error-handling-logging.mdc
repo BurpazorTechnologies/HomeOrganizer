@@ -1,0 +1,24 @@
+---
+description: |
+  Error handling rules: typed failures, consistent user messaging, structured logging, and crash reporting.
+alwaysApply: false
+---
+# Error Handling & Logging
+
+## Failures
+- ✅ Use typed failure objects in domain:
+  - `NetworkFailure`, `AuthFailure`, `ValidationFailure`, etc.
+- ✅ Controllers translate failures into UI-friendly messages/state
+
+## Logging
+- ✅ Use a logger package (no print)
+- ✅ Redact secrets/PII
+- ✅ Log with context: feature, action, requestId (if available)
+
+## Crash reporting
+- ✅ Capture unhandled errors centrally (Crashlytics/Sentry)
+- ✅ Attach non-PII breadcrumbs for debugging
+
+## NEVER
+- ❌ Swallow exceptions silently
+- ❌ Show raw server error messages directly to user

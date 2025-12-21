@@ -1,0 +1,26 @@
+---
+description: |
+  Security and privacy rules: secrets, PII handling, secure storage, permissions, and transport safety.
+alwaysApply: false
+---
+# Security & Privacy
+
+## Secrets
+- ✅ No API keys in repo
+- ✅ Use flavors + CI secrets + runtime config (`--dart-define` or config files)
+
+## Tokens
+- ✅ Store tokens in secure storage
+- ✅ Avoid keeping tokens in memory longer than necessary
+
+## PII
+- ✅ Don’t log PII
+- ✅ Minimize data collection; document any analytics events
+
+## Permissions
+- ✅ Request permissions just-in-time
+- ✅ Handle denial gracefully
+
+## NEVER
+- ❌ Hardcode credentials
+- ❌ Log authorization headers, tokens, email addresses, etc.

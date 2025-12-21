@@ -4,5 +4,3 @@ const AppConfig localConfig = AppConfig(
   environment: AppEnvironment.local,
   apiBaseUrl: 'https://local.homeorganizer.xyz',
 );
-
-

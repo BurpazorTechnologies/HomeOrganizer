@@ -1,0 +1,28 @@
+---
+description: |
+  Model conventions using freezed/json_serializable: immutability, DTO/entity split, and codegen rules.
+alwaysApply: false
+---
+# Models, Serialization, Codegen
+
+## Conventions
+- ✅ Domain entities are immutable and UI-agnostic
+- ✅ DTOs mirror API contracts (version-aware), suffix with `Dto`
+- ✅ Mapping between DTO <-> domain via mappers
+
+## Codegen
+- ✅ Use:
+  - `freezed` for unions/immutable classes
+  - `json_serializable` for JSON
+- ✅ Commands:
+  - `dart run build_runner build --delete-conflicting-outputs`
+
+## Files
+- ✅ Keep one model per file where possible
+- ✅ Generated parts:
+  - `part '<name>.freezed.dart';`
+  - `part '<name>.g.dart';`
+
+## NEVER
+- ❌ Edit generated files
+- ❌ Use domain entities as API DTOs

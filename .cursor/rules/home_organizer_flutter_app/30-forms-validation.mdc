@@ -1,0 +1,26 @@
+---
+description: |
+  Forms, validation, and input handling: consistent patterns, reuse validators, and proper controller lifecycle.
+alwaysApply: false
+---
+# Forms & Validation
+
+## Pattern
+- ✅ Keep form state in a controller/notifier when it affects business logic
+- ✅ UI-only input state can use controllers locally, but keep it tidy
+
+## Validators
+- ✅ Validators live in `domain/` (if business rules) or `shared/validators/`
+- ✅ Reuse validators; no duplicated regex across screens
+
+## Controllers
+- ✅ Dispose `TextEditingController` and `FocusNode` in `dispose()`
+- ✅ Use debouncing for async validations (e.g., username availability)
+
+## Submission
+- ✅ Disable submit while loading
+- ✅ Show field-level errors and submit-level errors distinctly
+
+## NEVER
+- ❌ Validation logic embedded as large lambdas in widgets
+- ❌ Fire API calls on every keystroke without debounce/cancel

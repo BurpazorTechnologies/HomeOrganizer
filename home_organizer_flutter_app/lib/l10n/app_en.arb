@@ -1,0 +1,36 @@
+{
+  "@@locale": "en",
+  "appTitle": "Home Organizer",
+
+  "commonLoading": "Loading…",
+  "commonSomethingWentWrong": "Something went wrong.",
+  "commonLogout": "Logout",
+
+  "startupLoading": "Starting…",
+
+  "authLoginTitle": "Login",
+  "authEmailLabel": "Email",
+  "authEmailRequired": "Email is required",
+  "authEmailInvalid": "Enter a valid email",
+  "authPasswordLabel": "Password",
+  "authPasswordRequired": "Password is required",
+  "authLoginButton": "Login",
+  "authLoginInvalidCredentials": "Invalid login credentials",
+  "authLoginFailedGeneric": "Login failed. Please try again.",
+  "authLoginTooManyAttempts": "Too many login attempts. Please wait a minute and try again.",
+  "authPasswordVisibilityShow": "Show password",
+  "authPasswordVisibilityHide": "Hide password",
+
+  "dashboardTitle": "Dashboard",
+  "dashboardWelcome": "Welcome to dashboard",
+
+  "versionLoading": "Backend version: loading…",
+  "versionUnavailable": "Backend version: unavailable",
+  "versionValue": "Backend version: {version}",
+  "@versionValue": {
+    "placeholders": {
+      "version": {}
+    }
+  }
+}
+

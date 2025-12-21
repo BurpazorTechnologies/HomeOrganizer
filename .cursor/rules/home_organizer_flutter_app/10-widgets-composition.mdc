@@ -1,0 +1,32 @@
+---
+description: |
+  Widget composition best practices: small widgets, clean build methods, and separation of concerns.
+alwaysApply: false
+---
+# Widgets & Composition
+
+## Build method rules
+- ✅ `build()` is pure UI description
+- ✅ Extract:
+  - complex UI blocks into private widgets
+  - heavy calculations into helpers outside build (or memoize)
+- ✅ Prefer `const` widgets/constructors
+
+## State usage
+- ✅ Use `StatefulWidget` only for ephemeral UI state:
+  - animations, controllers, focus, local toggles
+- ✅ App/business state lives in Riverpod notifiers/controllers
+
+## Layout
+- ✅ Use `LayoutBuilder` for responsive decisions
+- ✅ Prefer `Sliver` patterns for complex scrolling
+- ✅ Avoid deep nesting; create sub-widgets
+
+## Keys
+- ✅ Only use Keys when needed:
+  - lists, reordering, animations, forms
+- ❌ Don’t sprinkle keys everywhere
+
+## NEVER
+- ❌ Trigger navigation/dialog/snackbar directly in build
+- ❌ Put data mapping logic in widgets

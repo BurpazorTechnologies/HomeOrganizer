@@ -1,0 +1,32 @@
+---
+description: |
+  Riverpod conventions: provider naming, state shape, side effects, and async patterns.
+alwaysApply: false
+---
+# State Management (Riverpod)
+
+## Provider conventions
+- ✅ Naming:
+  - `fooRepositoryProvider`
+  - `fooControllerProvider` / `fooNotifierProvider`
+- ✅ Providers are declared near feature boundaries (not scattered)
+
+## State shape
+- ✅ Prefer explicit state types:
+  - `AsyncValue<T>` for async flows
+  - sealed/freezed states for complex UI state
+- ✅ State is immutable; updates via `copyWith`
+
+## Side effects
+- ✅ Side effects live in controllers/notifiers:
+  - networking, storage writes, analytics, navigation signals
+- ✅ UI reacts to state changes via listeners/effects (not inside build)
+
+## Async rules
+- ✅ Always handle loading + error states
+- ✅ Map exceptions into domain failures (don’t leak Dio/Platform exceptions into UI)
+
+## NEVER
+- ❌ Call repositories directly from widgets
+- ❌ Store `BuildContext` inside controllers
+- ❌ Use global mutable singletons for state

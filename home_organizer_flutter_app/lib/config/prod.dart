@@ -7,5 +7,3 @@ const AppConfig prodConfig = AppConfig(
   environment: AppEnvironment.prod,
   apiBaseUrl: 'https://homeorganizer.xyz',
 );
-
-

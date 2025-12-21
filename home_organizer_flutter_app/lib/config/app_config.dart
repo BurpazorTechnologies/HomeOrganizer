@@ -7,10 +7,7 @@ enum AppEnvironment { local, dev, prod }
 /// - Select the environment by running a specific entrypoint (e.g. main_dev.dart)
 ///   which sets [AppConfig.set] before the app starts.
 class AppConfig {
-  const AppConfig({
-    required this.environment,
-    required this.apiBaseUrl,
-  });
+  const AppConfig({required this.environment, required this.apiBaseUrl});
 
   final AppEnvironment environment;
   final String apiBaseUrl;
@@ -31,5 +28,3 @@ class AppConfig {
     _instance = config;
   }
 }
-
-

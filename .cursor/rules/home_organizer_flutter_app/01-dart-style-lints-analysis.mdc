@@ -1,0 +1,37 @@
+---
+description: |
+  Dart style rules, analysis/lints expectations, and formatting discipline.
+alwaysApply: false
+---
+# Dart Style, Lints, Analysis
+
+## Required hygiene
+- ✅ Run formatting before committing: `dart format .`
+- ✅ Keep analyzer clean (warnings treated as errors in CI)
+- ✅ Prefer `final` and `const`
+- ✅ Use explicit types at API boundaries (public methods, DTOs)
+
+## Imports
+- ✅ Use `package:` imports for lib code
+- ✅ Relative imports only within the same directory (avoid deep relative paths)
+- ✅ No circular imports; use feature public API files if needed
+
+## Types
+- ✅ Avoid `dynamic`
+- ✅ Avoid `late` unless lifecycle requires it
+- ✅ Avoid `var` when it reduces readability
+
+## Async
+- ✅ Always `await` Futures unless intentionally fire-and-forget (comment why)
+- ✅ No unhandled Future errors (use `try/catch` with typed failures)
+
+## Codegen discipline
+- ✅ Generated files stay generated; never hand-edit:
+  - `*.freezed.dart`, `*.g.dart`
+- ✅ Use build_runner commands (examples):
+  - `dart run build_runner build --delete-conflicting-outputs`
+  - `dart run build_runner watch --delete-conflicting-outputs`
+
+## NEVER
+- ❌ Disable lints “because annoying” — fix the cause or document the exception
+- ❌ Commit code with analyzer warnings

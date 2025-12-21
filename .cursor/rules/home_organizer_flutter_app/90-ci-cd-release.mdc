@@ -1,0 +1,28 @@
+---
+description: |
+  CI/CD and release discipline: required checks, build steps, signing, and release hygiene.
+alwaysApply: false
+---
+# CI/CD & Release
+
+## Required CI checks
+- ✅ `dart format --set-exit-if-changed .`
+- ✅ `dart analyze`
+- ✅ `flutter test`
+- ✅ Build per flavor (at least dev + prod)
+
+## Release hygiene
+- ✅ Release checklist includes:
+  - version bump
+  - changelog update
+  - smoke test critical flows
+  - verify crash reporting enabled
+  - verify env points to correct backend
+
+## Signing
+- ✅ Keep signing keys in CI secrets or secure vault
+- ✅ Never store keystores in repo
+
+## NEVER
+- ❌ Merge code that fails analyze/tests
+- ❌ Ship without confirming correct flavor configuration

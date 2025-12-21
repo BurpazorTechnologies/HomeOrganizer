@@ -5,7 +5,7 @@
 install XCode + run IOS simulator first
 
 // run the app
-flutter run 
+flutter run --dart-define=UNREDACT_HTTP_LOGS=true
 
 // hot reload
 r

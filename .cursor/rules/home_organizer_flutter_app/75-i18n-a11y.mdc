@@ -1,0 +1,20 @@
+---
+description: |
+  Internationalization and accessibility rules: no hardcoded strings, semantics, text scaling, and usable UI.
+alwaysApply: false
+---
+# i18n & Accessibility
+
+## i18n
+- ✅ No hardcoded user-facing strings
+- ✅ Use `intl` + ARB workflow
+- ✅ Keep keys consistent and feature-scoped
+
+## Accessibility
+- ✅ Add semantics labels for icon-only buttons and custom widgets
+- ✅ Respect text scaling (avoid fixed heights that clip)
+- ✅ Ensure tap targets are usable
+
+## NEVER
+- ❌ Build UI that breaks at larger font sizes
+- ❌ Ship screens with missing semantics on critical controls

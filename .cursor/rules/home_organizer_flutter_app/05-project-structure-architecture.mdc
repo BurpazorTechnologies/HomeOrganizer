@@ -1,0 +1,36 @@
+---
+description: |
+  Feature-first folder structure and strict layer boundaries for scalability.
+alwaysApply: false
+---
+# Project Structure & Architecture
+
+## Recommended structure
+- `lib/`
+  - `app/` (app bootstrap, router, theme, DI composition)
+  - `shared/` (shared UI, utils, primitives, cross-cutting helpers)
+  - `features/<feature_name>/`
+    - `presentation/`
+    - `domain/`
+    - `data/`
+    - `<feature_name>.dart` (public API barrel file)
+
+## Feature public API rule
+- ✅ Other features import ONLY:
+  - `package:app/features/foo/foo.dart`
+- ✅ Internal feature folders should not be imported directly from outside
+
+## Layer rules
+- `presentation` can import `domain` (same feature) + `shared`
+- `domain` imports nothing from `presentation` or `data`
+- `data` can import `domain` (interfaces/entities) + `shared` (safe utilities)
+
+## What goes where
+- `domain/`: entities, value objects, usecases, repo interfaces, failures
+- `data/`: API client, DTOs, local sources, repo impl, mappers
+- `presentation/`: pages, widgets, controllers/notifiers, UI models
+
+## NEVER
+- ❌ Put HTTP/DB code in presentation
+- ❌ Put Flutter imports (`material.dart`) inside domain
+- ❌ Reference another feature’s internal folders directly

@@ -1,0 +1,43 @@
+---
+description: |
+  Global non-negotiable rules for a professional Flutter codebase (architecture, coding standards, boundaries).
+alwaysApply: false
+---
+# Global Flutter Guardrails
+
+## Defaults (assume unless user overrides)
+- **Architecture:** feature-first + layered (presentation / domain / data)
+- **State mgmt:** Riverpod
+- **Routing:** go_router
+- **Networking:** Dio
+- **Models:** freezed + json_serializable
+- **DI:** constructor injection + provider-based composition (no service locator in UI)
+
+## Non-negotiables
+- ✅ Null-safety always, no `dynamic` unless unavoidable and documented
+- ✅ Prefer immutability: `final` fields, immutable models
+- ✅ No side effects in `build()`:
+  - ❌ no network, disk I/O, DB calls, analytics, navigation, dialogs
+  - ✅ trigger side effects from controllers/notifiers or `initState`/effects
+- ✅ UI depends on domain abstractions, never on concrete data implementations
+- ✅ Keep widgets small and composable (extract when complex or deeply nested)
+- ✅ One responsibility per class/file
+
+## Boundaries
+- **presentation**: widgets, UI controllers, UI state, view models
+- **domain**: entities, value objects, usecases, repository interfaces, failures
+- **data**: DTOs, repository implementations, mappers, API clients, local storage
+
+## Naming conventions
+- Files: `snake_case.dart`
+- Types: `PascalCase`
+- Methods/vars: `camelCase`
+- Riverpod providers: `somethingProvider`, `somethingNotifierProvider`
+- DTO suffix: `*Dto`, mappers: `*Mapper`, repos: `*Repository`
+
+## NEVER
+- ❌ Put business logic inside widgets
+- ❌ Use `print()` for logging
+- ❌ Import across features without an explicit public API file/export
+- ❌ Store secrets in source code
+- ❌ Add packages without justification and ownership
