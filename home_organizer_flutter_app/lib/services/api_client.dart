@@ -2,6 +2,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_client_io.dart' if (dart.library.html) 'api_client_web.dart'
     as impl;
+import 'package:home_organizer_flutter_app/config/app_config.dart';
 
 /// Shared HTTP client wrapper for the app.
 ///
@@ -16,7 +17,7 @@ class ApiClient {
   /// Base host for your backend.
   ///
   /// This is your `{{host}}`.
-  static const String baseUrl = 'https://local.homeorganizer.xyz';
+  static String get baseUrl => AppConfig.instance.apiBaseUrl;
 
   Uri uri(String path) => Uri.parse('$baseUrl$path');
 

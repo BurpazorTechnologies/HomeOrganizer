@@ -5,8 +5,8 @@ import 'package:home_organizer_flutter_app/config/local.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Default entrypoint: local environment.
-  // Use `main_dev.dart` or `main_prod.dart` to switch environments.
   AppConfig.set(localConfig);
   runApp(const HomeOrganizerApp());
 }
+
+
