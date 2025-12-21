@@ -13,7 +13,6 @@ class LoginPage extends StatefulWidget {
     this.tokenStorage,
   });
 
-  /// Optional injection for tests / dependency management.
   final VersionService? versionService;
   final AuthService? authService;
   final TokenStorage? tokenStorage;
