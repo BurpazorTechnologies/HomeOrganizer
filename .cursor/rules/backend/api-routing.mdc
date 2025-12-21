@@ -1,0 +1,148 @@
+# Backend API Routing Standards
+
+## Versioned API Structure
+
+* **Main API routes** (`routes/api.php`): Only unversioned routes like `/health`, `/version` and `/status`
+* **Versioned API routes** (`routes/v1/api.php`, `routes/v2/api.php`, etc.): All business logic routes
+* **Future-proofing**: All new API endpoints go in versioned routes, not main API
+
+## Controller Organization
+
+* **Base controllers**: `app/Http/Controllers/Api/` (e.g., `AuthController.php`)
+* **Versioned controllers**: `app/Http/Controllers/Api/v1/`, `app/Http/Controllers/Api/v2/`, etc.
+* **Versioned controllers extend base controllers** when possible for code reuse
+
+## Route File Standards
+
+### Main API (`routes/api.php`)
+```php
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\v1\UtilityController;
+
+// Unversioned API routes - only health and status for future proofing
+Route::get('/health', [UtilityController::class, 'health']);
+
+Route::middleware('debug.enabled')->group(function () {
+    Route::get('/status', [UtilityController::class, 'status']);
+});
+```
+
+### Versioned API (`routes/v1/api.php`, `routes/v2/api.php`, etc.)
+```php
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\v1\AuthController;  // EXPLICIT IMPORTS REQUIRED
+use App\Http\Controllers\Api\v1\SomeController;  // NO AUTOMATIC NAMESPACE RESOLUTION
+
+// Authentication routes
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    
+    // Protected routes
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/user', [AuthController::class, 'user']);
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/logout-all', [AuthController::class, 'logoutAll']);
+    });
+});
+
+```
+
+## RouteServiceProvider Configuration
+
+* **NO automatic namespace resolution** for versioned routes
+* **Explicit imports required** in each versioned API file
+* **RouteServiceProvider** only handles prefixing and middleware, not namespacing
+
+```php
+// RouteServiceProvider.php - mapVersionedApiRoutes()
+Route::middleware('api')
+    ->prefix("api/{$version}")
+    ->group(function () use ($routeFile) {
+        require $routeFile;  // NO namespace parameter
+    });
+```
+
+## Controller Standards
+
+### Base Controller Example
+```php
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+
+class AuthController extends Controller
+{
+    public function register(Request $request): JsonResponse
+    {
+        // Implementation
+    }
+    
+    public function login(Request $request): JsonResponse
+    {
+        // Implementation
+    }
+}
+```
+
+### Versioned Controller Example
+```php
+<?php
+
+namespace App\Http\Controllers\Api\v1;
+
+use App\Http\Controllers\Api\AuthController as BaseAuthController;
+
+class AuthController extends BaseAuthController
+{
+    // Extends base controller for code reuse
+    // Can override methods if needed for v1-specific behavior
+}
+```
+
+## Middleware Standards
+
+* **Authentication**: `auth:sanctum` for protected routes
+* **Permissions**: `permission:permission_name` for specific permissions
+* **Roles**: `role:role_name` for specific roles
+* **Role or Permission**: `role_or_permission:role|permission` for either/or
+
+## Route Naming Conventions
+
+* **Authentication**: `auth/register`, `auth/login`, `auth/user`, `auth/logout`
+* **Business Logic**: Use descriptive names like `admin-panel`
+* **Versioned URLs**: All business routes under `/api/v1/`, `/api/v2/`, etc.
+
+## Do / Don't
+
+* ✅ **DO** use explicit imports in versioned API files
+* ✅ **DO** extend base controllers in versioned controllers
+* ✅ **DO** keep main API routes minimal (health/status only)
+* ✅ **DO** use descriptive route names and proper middleware
+* ❌ **DON'T** rely on automatic namespace resolution
+* ❌ **DON'T** put business logic in main API routes
+* ❌ **DON'T** mix versioned and unversioned routes in same file
+
+## Future API Versions
+
+When creating v2, v3, etc.:
+1. Create `routes/v2/api.php` with explicit imports
+2. Create `app/Http/Controllers/Api/v2/` directory
+3. Create versioned controllers that extend base controllers
+4. RouteServiceProvider automatically picks up new versions
+
+## Verification Checklist
+
+1. Main API only has health/status routes
+2. All business logic in versioned routes
+3. Explicit imports in all versioned API files
+4. Controllers properly namespaced and organized
+5. Middleware applied correctly for auth/permissions/roles
+6. RouteServiceProvider has no automatic namespace resolution

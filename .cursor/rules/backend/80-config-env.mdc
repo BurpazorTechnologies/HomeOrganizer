@@ -1,0 +1,84 @@
+---
+description: Laravel config & env (auto-attach when touching config/* or .env*)
+globs:
+  - "config/**/*.php"
+  - ".env"
+  - ".env.example"
+---
+
+# Configuration Management — DO
+- **App settings → config/*.php** (parametrized via env())
+- **Secrets/urls/ports → .env**; mirror safe defaults in .env.example
+- **Use environment-specific** configuration files when needed
+- **Validate configuration** with config validation
+- **Cache configuration** in production for performance
+
+# Environment Variables — DO
+- **Use descriptive names** for environment variables
+- **Use UPPER_SNAKE_CASE** for environment variable names
+- **Provide default values** in config files
+- **Document all environment variables** in .env.example
+- **Use different .env files** for different environments
+
+# Configuration Files — DO
+- **Keep config files focused** on single concerns
+- **Use arrays for complex** configuration structures
+- **Use config caching** in production
+- **Validate configuration** on application startup
+- **Use config merging** for environment-specific overrides
+
+# Security Best Practices — DO
+- **NEVER commit secrets** to version control
+- **NEVER hardcode credentials** in PHP files
+- **Use .env.example** to document required variables
+- **Use different secrets** for different environments
+- **Rotate secrets regularly** in production
+- **Use environment-specific** .env files
+
+# Configuration Validation — DO
+- **Validate required** environment variables
+- **Use config validation** in service providers
+- **Fail fast** on missing configuration
+- **Provide clear error messages** for configuration issues
+- **Use type validation** for configuration values
+
+# Environment-Specific Config — DO
+- **Use config:cache** in production
+- **Use different config files** for different environments
+- **Use environment detection** for conditional configuration
+- **Use config merging** for environment overrides
+- **Test configuration** in all environments
+
+# Configuration Patterns — DO
+- **Use service providers** for complex configuration
+- **Use configuration facades** for runtime configuration
+- **Use configuration publishing** for package configuration
+- **Use configuration merging** for package defaults
+- **Use configuration validation** for package requirements
+
+# NEVER:
+- **Commit .env files** to version control
+- **Hardcode sensitive data** in configuration files
+- **Use production secrets** in development
+- **Skip configuration validation** in production
+- **Use insecure configuration** patterns
+- **Expose configuration** in error messages
+
+# Best Practices — DO
+- **Use meaningful names** for configuration keys
+- **Group related configuration** in single files
+- **Use type hints** for configuration values
+- **Document configuration** with comments
+- **Use configuration testing** to verify setup
+- **Monitor configuration** changes in production
+
+# Advanced Patterns — DO
+- **Use configuration caching** for performance
+- **Use configuration merging** for complex setups
+- **Use configuration validation** for reliability
+- **Use configuration publishing** for packages
+- **Use configuration events** for monitoring
+- **Use configuration encryption** for sensitive data
+
+# See Also
+- Services & Controllers (15) - for using configuration in services

@@ -1,0 +1,67 @@
+---
+description: Policies & Authorization (auto-attach when touching app/Policies, AuthServiceProvider)
+globs:
+  - "app/Policies/**/*.php"
+  - "app/Providers/AuthServiceProvider.php"
+---
+
+# Policy Creation & Structure
+- **Generate with:** `php artisan make:policy PostPolicy --model=Post`
+- **Use descriptive names** that match the model (PostPolicy, UserPolicy)
+- **One policy per model** for centralized authorization logic
+- **Keep policies focused** on authorization decisions only
+
+# Essential Policy Methods — DO
+- **viewAny()** - can user view any instances of this model?
+- **view()** - can user view this specific instance?
+- **create()** - can user create new instances?
+- **update()** - can user update this instance?
+- **delete()** - can user delete this instance?
+- **restore()** - can user restore this instance? (soft deletes)
+- **forceDelete()** - can user permanently delete this instance?
+
+# Policy Implementation — DO
+- **Return boolean values** from all policy methods
+- **Use type hints** for model parameters
+- **Handle null models** appropriately (for create operations)
+- **Use clear, descriptive method names** that read naturally
+- **Document complex authorization logic** with comments
+
+# Authorization in Controllers — DO
+- **Use $this->authorize()** for simple authorization checks
+- **Use Gate::allows()** for complex authorization logic
+- **Use @can directive** in Blade templates
+- **Use can() helper** in Blade templates
+- **Handle authorization failures** gracefully
+
+# Advanced Authorization Patterns — DO
+- **Use policy gates** for complex authorization logic
+- **Create custom gates** for application-wide permissions
+- **Use middleware** for route-level authorization
+- **Implement role-based authorization** with proper checks
+- **Use resource authorization** for RESTful operations
+
+# Policy Registration — DO
+- **Use auto-discovery** for standard policy-model relationships
+- **Register manually** in AuthServiceProvider for custom policies
+- **Use policy classes** for complex authorization logic
+- **Bind policies to models** explicitly when needed
+
+# NEVER:
+- **Put authorization logic in controllers** or services
+- **Hardcode user roles** in policy methods
+- **Skip authorization checks** in sensitive operations
+- **Return HTTP responses** from policy methods
+- **Put business logic** in policy methods
+- **Use complex database queries** in policy methods
+
+# Common Authorization Patterns — DO
+- **Owner-based authorization** - user owns the resource
+- **Role-based authorization** - user has specific role
+- **Permission-based authorization** - user has specific permission
+- **Context-based authorization** - authorization depends on context
+- **Time-based authorization** - authorization depends on time
+
+# See Also
+- Services & Controllers (15) - for controller authorization usage
+- Requests & Validation (20) - for request-level authorization

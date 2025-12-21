@@ -1,0 +1,95 @@
+---
+description: Jobs / Queues / Mail / Notifications (auto-attach)
+globs:
+  - "app/Jobs/**/*.php"
+  - "app/Mail/**/*.php"
+  - "app/Notifications/**/*.php"
+---
+
+# Jobs — Background Processing
+- **Generate with:** `php artisan make:job PublishPost`
+- **Use for time-consuming operations** (email sending, file processing, API calls)
+- **Implement ShouldQueue interface** for asynchronous processing
+- **Keep jobs focused** on single, specific tasks
+- **Make jobs idempotent** when possible
+
+# Job Implementation — DO
+- **Use constructor injection** for dependencies
+- **Handle job failures** with failed() method
+- **Use proper type hints** for all parameters
+- **Keep jobs stateless** and avoid storing state
+- **Use job middleware** for cross-cutting concerns
+- **Implement retry logic** with backoff strategies
+
+# Job Dispatching — DO
+- **Use dispatch()** for asynchronous processing
+- **Use dispatchSync()** for immediate execution (testing)
+- **Use dispatchAfterResponse()** for after-request processing
+- **Use delay()** for scheduled execution
+- **Use onQueue()** for specific queue assignment
+- **Use onConnection()** for specific queue connection
+
+# Mail — Email Sending
+- **Generate with:** `php artisan make:mail PostPublished`
+- **Use for transactional emails** (welcome, notifications, confirmations)
+- **Keep templates in resources/views/emails/**
+- **Use Mailable classes** for complex email logic
+- **Test emails** with Mail::fake() in tests
+
+# Mail Implementation — DO
+- **Use build() method** for email construction
+- **Use with() method** for data passing to templates
+- **Use attachments()** for file attachments
+- **Use queue()** for large email volumes
+- **Use markdown()** for rich email templates
+- **Use subject()** for dynamic subject lines
+
+# Notifications — User Notifications
+- **Generate with:** `php artisan make:notification PostPublishedNotification`
+- **Use for user-facing notifications** (in-app, email, SMS, Slack)
+- **Support multiple channels** (mail, database, broadcast, slack)
+- **Keep notifications focused** on single events
+- **Use notification channels** for different delivery methods
+
+# Notification Implementation — DO
+- **Use via() method** to specify channels
+- **Use toMail()** for email notifications
+- **Use toDatabase()** for database notifications
+- **Use toBroadcast()** for real-time notifications
+- **Use toArray()** for database storage
+- **Use shouldSend()** for conditional sending
+
+# Queue Configuration — DO
+- **Configure queues** in config/queue.php
+- **Use database driver** for development
+- **Use Redis driver** for production
+- **Set up queue workers** with proper configuration
+- **Monitor queue performance** and failures
+- **Use queue priorities** for important jobs
+
+# Error Handling — DO
+- **Handle job failures** gracefully
+- **Implement retry logic** with exponential backoff
+- **Log failures** for debugging
+- **Use dead letter queues** for failed jobs
+- **Monitor queue health** and performance
+- **Alert on critical failures**
+
+# NEVER:
+- **Put heavy business logic** in mail classes
+- **Send emails synchronously** in controllers
+- **Store sensitive data** in job payloads
+- **Create infinite loops** in job retry logic
+- **Skip error handling** in async operations
+- **Use blocking operations** in queued jobs
+
+# Advanced Patterns — DO
+- **Use job batching** for related operations
+- **Implement job chaining** for sequential operations
+- **Use job middleware** for cross-cutting concerns
+- **Create custom queue drivers** when needed
+- **Use job events** for monitoring and logging
+- **Implement job prioritization** strategies
+
+# See Also
+- Services & Controllers (15) - for dispatching jobs from services

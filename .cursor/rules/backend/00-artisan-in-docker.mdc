@@ -1,0 +1,70 @@
+---
+description: |
+alwaysApply: false
+---
+# Docker-Exclusive Development Policy
+- ✅ **Primary form (container running):**
+  - `docker compose exec backend php artisan <command>`
+- ✅ **One-off / container not running:**
+  - `docker compose run --rm backend php artisan <command>`
+- ✅ **Interactive tools (e.g., tinker):**
+  - `docker compose exec backend php artisan tinker`
+- ✅ **Queue workers:**
+  - `docker compose exec backend php artisan queue:work`
+- ✅ **Scheduled tasks:**
+  - `docker compose exec backend php artisan schedule:run`
+
+# Common Artisan Commands — DO
+- **Migrations:** `docker compose exec backend php artisan migrate`
+- **Fresh migration:** `docker compose exec backend php artisan migrate:fresh --seed`
+- **Rollback:** `docker compose exec backend php artisan migrate:rollback`
+- **Cache clear:** `docker compose exec backend php artisan cache:clear`
+- **Config cache:** `docker compose exec backend php artisan config:cache`
+- **Route cache:** `docker compose exec backend php artisan route:cache`
+- **View cache:** `docker compose exec backend php artisan view:cache`
+- **Optimize:** `docker compose exec backend php artisan optimize`
+
+# Development Commands — DO
+- **Generate models:** `docker compose exec backend php artisan make:model Post -m -f`
+- **Generate controllers:** `docker compose exec backend php artisan make:controller PostController`
+- **Generate requests:** `docker compose exec backend php artisan make:request StorePostRequest`
+- **Generate policies:** `docker compose exec backend php artisan make:policy PostPolicy --model=Post`
+- **Generate jobs:** `docker compose exec backend php artisan make:job ProcessPost`
+- **Generate mail:** `docker compose exec backend php artisan make:mail PostPublished`
+- **Generate notifications:** `docker compose exec backend php artisan make:notification PostPublishedNotification`
+- **Generate tests:** `docker compose exec backend php artisan make:test PostTest --pest`
+
+# Testing Commands — DO
+- **Run tests:** `docker compose exec backend php artisan test`
+- **Run specific test:** `docker compose exec backend php artisan test --filter=PostTest`
+- **Run with coverage:** `docker compose exec backend php artisan test --coverage`
+- **Run Pest tests:** `docker compose exec backend ./vendor/bin/pest`
+
+# Database Commands — DO
+- **Seed database:** `docker compose exec backend php artisan db:seed`
+- **Seed specific seeder:** `docker compose exec backend php artisan db:seed --class=PostSeeder`
+- **Fresh with seed:** `docker compose exec backend php artisan migrate:fresh --seed`
+- **Database status:** `docker compose exec backend php artisan migrate:status`
+
+# NEVER
+- ❌ Show bare `php artisan …` outside Docker
+- ❌ Use Sail (`./vendor/bin/sail`) unless the user explicitly asks
+- ❌ Reference a different service name unless the user overrides it
+- ❌ Assume PHP is installed on the local host
+- ❌ Use local PHP commands or tools
+- ❌ Reference local PHP paths or configurations
+
+# Container Management — DO
+- **Start services:** `docker compose up -d`
+- **Stop services:** `docker compose down`
+- **Restart backend:** `docker compose restart backend`
+- **View logs:** `docker compose logs backend`
+- **Follow logs:** `docker compose logs -f backend`
+- **Execute shell:** `docker compose exec backend bash`
+
+# Notes
+- Use the exact service name: **backend**
+- Keep commands minimal and scoped to the user's request
+- This is a Docker-exclusive development environment
+- No PHP is installed on the local host
+- All Laravel operations must go through the Docker container

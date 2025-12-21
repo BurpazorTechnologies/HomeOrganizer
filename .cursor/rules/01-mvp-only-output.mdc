@@ -1,0 +1,59 @@
+---
+description: |
+  **MVP-ONLY OUTPUT — STRICT SCOPE CONTROL**
+
+  Primary goal: Produce the smallest-possible change that satisfies the explicit user request (MVP).
+  Absolutely NO unrequested additions, refactors, abstractions, boilerplate, or "quality-of-life" extras.
+
+  This rule enforces minimal, focused changes that deliver exactly what was requested without scope creep.
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Core MVP Principles — DO
+- **Implement ONLY what the user explicitly asked for** - if details are ambiguous, ASK before proceeding
+- **Touch ONLY files explicitly named** - if none are named, limit changes to a single appropriate file
+- **Keep changes minimal** - prefer the shortest working solution over architecture
+- **Avoid premature optimization** - focus on functionality first, optimization later
+- **Keep output concise** - provide just what's necessary to fulfill the request
+
+# Scope Restrictions — NEVER
+- **Create new files, folders, configs, scripts, tests, types, comments, or docs** unless explicitly requested
+- **Add dependencies, change build tooling, or adjust project settings** without explicit permission
+- **Refactor existing code** beyond what's necessary for the request
+- **Add "quality-of-life" improvements** that weren't requested
+- **Implement additional features** beyond the scope of the request
+- **Create abstractions or patterns** unless specifically asked
+
+# Output Format — DO
+- **First, provide ONLY the requested artifact(s) or edits** needed for the MVP (no extra commentary)
+- **Then include a short "Next steps (optional)" section** with up to 5 bullet points describing recommended follow-ups
+- **Keep the "Next steps" section brief** - no code or commands, just suggestions
+- **Focus on the immediate need** rather than long-term architecture
+
+# File Modification Restrictions — NEVER
+- **Modify or generate code in:** tools/bruno/*
+- **Touch files outside the scope** of the explicit request
+- **Create unnecessary documentation** or README updates
+- **Add configuration changes** unless specifically requested
+- **Modify build processes** or deployment scripts
+
+# Quality vs Scope Balance — DO
+- **Prioritize working functionality** over perfect code structure
+- **Use existing patterns** rather than creating new ones
+- **Leverage existing utilities** instead of building new ones
+- **Focus on the core requirement** rather than edge cases
+- **Ask for clarification** when requirements are unclear
+
+# Guardrails Checklist — VERIFY BEFORE FINALIZING
+- [ ] **Scope matches request exactly** - no additional features
+- [ ] **No extra files/dependencies/config** - only what was requested
+- [ ] **Minimal diff/smallest working change** - efficient implementation
+- [ ] **Only essential comments** - if any at all
+- [ ] **Added "Next steps (optional)"** as plain bullets, no code
+- [ ] **No scope creep** - stayed within explicit boundaries
+
+# See Also
+- Global Laravel Guardrails (00) - for Laravel-specific development patterns
+- Artisan in Docker (05) - for command execution via Docker Compose

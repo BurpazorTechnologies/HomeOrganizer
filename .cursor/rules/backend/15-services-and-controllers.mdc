@@ -1,0 +1,39 @@
+---
+description: Services vs Controllers — keep business logic in Services; keep Controllers thin (auto-attach for app/Services and Controllers)
+globs:
+  - "app/Services/**/*.php"
+  - "app/Http/Controllers/**/*.php"
+---
+
+# Principles
+- **Business logic lives in Service classes** (e.g., `App\Services\*`) to keep it cohesive and testable.
+- **Controllers only translate HTTP**: accept requests, call services, return responses/resources/redirects.
+
+# Services — DO
+- Place classes under `app/Services/` (one capability-focused class, e.g., `PostPublisher`).
+- Use **constructor injection** for dependencies (models, repositories, other services, clients).
+- Accept **validated input** (arrays/DTOs) from `FormRequest`.
+- Return **domain data** (Models/DTOs/value objects) or simple result objects — **not** `Response`/`RedirectResponse`.
+- Wrap multi-write operations in **`DB::transaction()`** when needed.
+- Emit **domain events**/dispatch jobs from here, not controllers.
+- Keep services **framework-agnostic** (no `request()`/`response()`).
+
+# Controllers — DO
+- Keep methods thin: **map HTTP → service → HTTP**.
+- Type-hint `FormRequest` and use `$request->validated()`.
+- Use **Route Model Binding** for entities.
+- Shape output via **API Resources** or redirects.
+
+# NEVER
+- Put queries/business rules in controllers.
+- Call `request()`/`response()` or build HTTP responses inside services.
+- Use static calls to services; prefer **dependency injection**.
+- Do I/O (files, cache, external APIs) directly in controllers — delegate to services/clients.
+
+# Testing
+- **Unit test** services in `tests/Unit/Services`.
+- **Feature test** controllers (HTTP status, JSON shape via Resources).
+
+# Notes
+- Laravel has no default `make:service`; if you don’t have a custom generator, **create the class manually** under `app/Services/`.
+- For complex boundaries or external integrations, define **service interfaces** and bind them in a (dedicated) provider.

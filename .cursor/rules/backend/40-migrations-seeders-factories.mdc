@@ -1,0 +1,67 @@
+---
+description: Migrations/Seeders/Factories (auto-attach when touching database/*)
+globs:
+  - "database/migrations/**/*.php"
+  - "database/seeders/**/*.php"
+  - "database/factories/**/*.php"
+---
+
+# Migrations — Database Schema Management
+- **Generate with:** `php artisan make:migration create_posts_table`
+- **Use descriptive names** that explain the change (add_user_role_column)
+- **Always include down() method** for rollback capability
+- **Test migrations** in both directions (up and down)
+- **Use proper column types** and constraints
+
+# Migration Best Practices — DO
+- **Use Schema facade** for all schema operations
+- **Add indexes** for frequently queried columns
+- **Use foreign key constraints** for data integrity
+- **Add timestamps** with created_at and updated_at
+- **Use soft deletes** with deleted_at when appropriate
+- **Version control migrations** - never edit existing ones
+
+# Seeders — Test Data Creation
+- **Generate with:** `php artisan make:seeder PostSeeder`
+- **Use for development data** and essential application data
+- **Keep seeders focused** on single model or related models
+- **Use factories** within seeders for data generation
+- **Make seeders idempotent** (safe to run multiple times)
+
+# Seeder Best Practices — DO
+- **Use DB::transaction()** for complex seeding operations
+- **Handle foreign key constraints** properly
+- **Use conditional seeding** to avoid duplicates
+- **Document seeder dependencies** and order
+- **Test seeders** with fresh database
+
+# Factories — Test Data Generation
+- **Generate with:** `php artisan make:factory PostFactory --model=Post`
+- **Use for testing** and development data generation
+- **Create realistic test data** that represents real scenarios
+- **Use Faker** for generating random but realistic data
+- **Create factory states** for different model variations
+
+# Factory Best Practices — DO
+- **Use meaningful attribute names** and values
+- **Create factory states** for different scenarios (admin, published, draft)
+- **Use relationships** to create related models
+- **Keep factories simple** and focused
+- **Use sequences** for unique values (emails, usernames)
+
+# Database Commands — DO
+- **Run migrations:** `php artisan migrate`
+- **Fresh migration:** `php artisan migrate:fresh --seed` (dev only)
+- **Rollback:** `php artisan migrate:rollback`
+- **Reset:** `php artisan migrate:reset`
+- **Status:** `php artisan migrate:status`
+
+# NEVER:
+- **Edit schema in runtime code** - only via migrations
+- **Delete migration files** once they're in production
+- **Modify existing migrations** that have been run
+- **Put sensitive data** in seeders (use environment variables)
+- **Create production data** with seeders
+
+# See Also
+- Models & Eloquent (10) - for model relationships and factories

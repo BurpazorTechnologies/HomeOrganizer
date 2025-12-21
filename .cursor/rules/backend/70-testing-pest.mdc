@@ -1,0 +1,124 @@
+---
+description: Testing with Pest (auto-attach when touching tests/*)
+globs:
+  - "tests/**/*.php"
+---
+
+# Test Creation & Structure
+- **Generate with:** `php artisan make:test PostTest --pest`
+- **Use descriptive test names** that explain what is being tested
+- **Organize tests by feature** or functionality
+- **Keep tests focused** on single behaviors or scenarios
+- **Use Pest's fluent syntax** for readable test descriptions
+
+# Test Types — DO
+- **Unit tests** - test individual classes/methods in isolation
+- **Feature tests** - test HTTP endpoints and user workflows
+- **Integration tests** - test database interactions and external APIs
+- **Browser tests** - test user interactions with Laravel Dusk
+
+# Database Testing — DO
+- **Use RefreshDatabase** for tests that modify data
+- **Use DatabaseTransactions** for tests that need rollback
+- **Use DatabaseMigrations** for tests that need fresh schema
+- **Prefer factories** over manual model creation
+- **Use seeders** for complex test data setup
+
+# Authentication Testing — DO
+- **Use actingAs($user)** for authenticated requests
+- **Test both authenticated and unauthenticated** scenarios
+- **Use different user roles** in tests
+- **Test authorization** with various permission levels
+- **Mock authentication** when testing services
+
+# HTTP Testing — DO
+- **Use get(), post(), put(), delete()** for HTTP requests
+- **Test response status codes** (200, 201, 400, 401, 403, 404, 422, 500)
+- **Test response content** and JSON structure
+- **Test headers** and cookies
+- **Test redirects** and route parameters
+
+# Service Testing — DO
+- **Test service methods** in isolation
+- **Mock external dependencies** with Mockery or Pest's mocking
+- **Test error handling** and edge cases
+- **Test return values** and side effects
+- **Use dependency injection** for testable services
+
+# Model Testing — DO
+- **Test model relationships** and scopes
+- **Test accessors and mutators**
+- **Test model events** and observers
+- **Test validation rules** and constraints
+- **Test factory states** and variations
+
+# Queue Testing — DO
+- **Use Queue::fake()** to test job dispatching
+- **Use Mail::fake()** to test email sending
+- **Use Notification::fake()** to test notifications
+- **Test job failures** and retry logic
+- **Test queue priorities** and delays
+
+# API Testing — DO
+- **Test API endpoints** with proper headers
+- **Test authentication** with tokens
+- **Test validation** with invalid data
+- **Test error responses** and status codes
+- **Test pagination** and filtering
+
+# Test Data Management — DO
+- **Use factories** for consistent test data
+- **Create factory states** for different scenarios
+- **Use seeders** for complex data relationships
+- **Clean up test data** after each test
+- **Use unique data** to avoid conflicts
+
+# Mocking & Stubbing — DO
+- **Mock external services** and APIs
+- **Stub file operations** and uploads
+- **Mock time-dependent** operations
+- **Use partial mocks** for complex objects
+- **Test with different mock scenarios**
+
+# Test Organization — DO
+- **Group related tests** with describe() blocks
+- **Use beforeEach()** and afterEach() for setup/teardown
+- **Create helper methods** for common test operations
+- **Use data providers** for parameterized tests
+- **Document complex test scenarios**
+
+# Performance Testing — DO
+- **Test database query performance** with assertDatabaseQueriesCount()
+- **Test memory usage** for large operations
+- **Test response times** for API endpoints
+- **Use database query logging** to identify N+1 problems
+- **Test with realistic data volumes**
+
+# NEVER:
+- **Skip testing** critical business logic
+- **Test implementation details** instead of behavior
+- **Create brittle tests** that break with minor changes
+- **Use production data** in tests
+- **Skip error case testing**
+- **Create tests that depend on external services**
+
+# Best Practices — DO
+- **Write tests first** (TDD) when possible
+- **Keep tests simple** and focused
+- **Use descriptive test names** that explain the scenario
+- **Test edge cases** and error conditions
+- **Maintain test coverage** above 80%
+- **Refactor tests** when code changes
+
+# Advanced Testing Patterns — DO
+- **Use test traits** for shared test functionality
+- **Create custom assertions** for domain-specific checks
+- **Use test databases** for integration testing
+- **Implement test data builders** for complex objects
+- **Use test doubles** for external dependencies
+
+# See Also
+- Services & Controllers (15) - for testing service and controller layers
+- Models & Eloquent (10) - for testing model relationships and behavior
+- Jobs & Mail (60) - for testing async operations
+- Global Laravel Guardrails (00) - for testing best practices

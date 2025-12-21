@@ -1,0 +1,63 @@
+---
+description: Models & Eloquent (auto-attach when touching app/Models or app/)
+globs:
+  - "app/Models/**/*.php"
+  - "app/**/*.php"
+---
+
+# Model Creation & Structure
+- **Generate with:** `php artisan make:model Post -m -f` (adds migration & factory)
+- **Keep models thin but canonical** - they should represent your data structure
+- **One model per database table** following Laravel conventions
+- **Use meaningful model names** that match your business domain
+
+# Essential Model Properties
+- **$fillable** - define mass assignable attributes for security
+- **$guarded** - alternative to $fillable (use one or the other, not both)
+- **$hidden** - attributes to hide from JSON serialization (passwords, tokens)
+- **$casts** - automatic type casting (dates, booleans, arrays, JSON)
+- **$dates** - deprecated in Laravel 9+, use $casts instead
+
+# Relationships — DO
+- **Define relationships clearly** with proper return types
+- **Use descriptive method names** (user, posts, comments, not rel1, rel2)
+- **Document relationship types** in PHPDoc comments
+- **Use proper foreign key conventions** (user_id, post_id)
+- **Lazy load relationships** by default, eager load when needed
+
+# Scopes & Query Methods — DO
+- **Create local scopes** for common query patterns (`scopePublished`, `scopeActive`)
+- **Use descriptive scope names** that read naturally in queries
+- **Keep scopes focused** on single concerns
+- **Document complex scopes** with examples
+
+# Accessors & Mutators — DO
+- **Use accessors** for computed attributes (`getFullNameAttribute`)
+- **Use mutators** for data transformation before saving (`setPasswordAttribute`)
+- **Follow naming conventions** (get/set + StudlyCase + Attribute)
+- **Keep logic simple** in accessors/mutators
+
+# Model Events — DO
+- **Use model events** for side effects (sending emails, logging)
+- **Prefer observers** over model event methods for complex logic
+- **Use boot() method** for model-specific event registration
+- **Keep event logic focused** and testable
+
+# NEVER:
+- **Put request validation** or route logic in models
+- **Make direct HTTP calls** or external API requests
+- **Access request/response objects** directly
+- **Put complex business logic** that belongs in services
+- **Use static methods** for business operations (use services instead)
+- **Hardcode configuration values** (use config files)
+
+# Best Practices
+- **Use type hints** for all method parameters and return types
+- **Document complex methods** with PHPDoc comments
+- **Keep relationships simple** and avoid deep nesting
+- **Use factories** for testing data creation
+- **Consider model traits** for shared functionality across models
+
+# See Also
+- Services & Controllers (15) - for business logic placement
+- Migrations & Factories (40) - for database schema and test data

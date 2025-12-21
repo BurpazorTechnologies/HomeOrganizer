@@ -1,0 +1,109 @@
+description: |
+DOC-FIRST, NO-BYPASS GATE
+
+Enforce a strict “plan-before-code” workflow. For EVERY request, the AI must first create a step-by-step plan in /doc/{plan-name}.md and wait for approval before touching any non-doc files. The AI is NOT allowed to bypass this under any circumstance (even if the user says “skip”).
+globs:
+
+"**/*"
+alwaysApply: true
+
+DOC-FIRST, NO-BYPASS GATE (MANDATORY)
+Hard rules (must follow)
+
+Create the plan first: Before writing ANY code, shell commands, or changing non-doc files, generate a new markdown file at /doc/{yyyyMMdd-HHmm}-{task-slug}.md. If /doc/ doesn’t exist, include creating it in the plan.
+
+Single-artifact first reply: The first reply must contain only the new plan file’s contents (no extra commentary), wrapped in a code fence, and clearly indicating the path /doc/{...}.md.
+
+Approval gate: Do not proceed to implementation until the plan receives explicit approval (user replies with “APPROVED” or the plan’s Approval section is updated to status: approved).
+
+No bypass: If asked to skip, restate this rule and present/update the plan. Never continue without approval.
+
+MVP scope control: After approval, implement only what’s in the plan’s “Files to change” and “Steps” sections. Do not expand scope unless the plan is updated and re-approved.
+
+Command style: Any Laravel artisan commands must be shown as docker compose exec backend php artisan ….
+
+DB migrations (pre-release): Assume fresh install. Only create “create_*.php” migrations; do not write alters or add columns!. If schema changes are needed, revise the plan.
+
+Plan file template (copy verbatim into the new /doc/{plan}.md)
+---
+title: "<Concise task title>"
+id: "<yyyyMMdd-HHmm-task-slug>"
+status: draft
+owner: "AI"
+requires_approval: true
+---
+
+# 1) Summary / Goal
+- What is being requested (1–3 sentences).
+- Why it matters (user impact).
+
+# 2) MVP Scope (Do the minimum)
+- In-scope:
+  - …
+- Out-of-scope:
+  - …
+
+# 3) Assumptions & Constraints
+- Environment (Docker, services).
+- DB note: pre-release => fresh install; create-only migrations.
+- Any known limits.
+
+# 4) Files to Change (strict allow-list)
+- `/path/to/file1.ext` — reason
+- `/path/to/file2.ext` — reason
+> Only files listed here may be edited in implementation.
+
+# 5) Implementation Steps (ordered, checklist)
+1. …
+2. …
+3. …
+
+# 6) API / Contracts (if applicable)
+- Endpoints, payloads, responses, status codes.
+
+# 7) Permissions / Access (if applicable)
+- Roles/tags needed and checks.
+
+# 8) Commands to Run
+```bash
+docker compose exec backend php artisan …
+
+9) Test Plan (how we verify)
+
+Manual steps / URLs / sample inputs.
+
+Expected outputs.
+
+10) Rollback Plan
+
+How to revert safely.
+
+11) Open Questions
+
+…
+
+Approval
+
+status: pending
+
+approver: <name or “User”>
+
+date: <yyyy-MM-dd>
+
+Reply “APPROVED” to proceed. Any change in scope requires updating this doc and re-approval.
+
+
+---
+
+## Implementation phase (only after approval)
+- Touch **only** the files listed in **Files to Change**.
+- Follow the exact **Implementation Steps**.
+- Keep changes minimal; no refactors or extras unless added to the plan and re-approved.
+- If anything is ambiguous, **pause and update the plan** instead of guessing.
+
+## Output formatting requirements
+- **First reply:** only the `/doc/{plan}.md` file content (as a code block).
+- **Subsequent replies (post-approval):** only the requested diffs or file contents needed for the MVP; no extra commentary.
+- When running Laravel tasks, show commands as `docker compose exec backend php artisan …`.
+
+**This rule is mandatory and cannot be bypassed.**

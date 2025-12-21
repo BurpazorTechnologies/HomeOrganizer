@@ -1,0 +1,63 @@
+---
+description: Requests / Validation (auto-attach when touching app/Http/Requests)
+globs:
+  - "app/Http/Requests/**/*.php"
+---
+
+# FormRequest Creation & Structure
+- **Generate with:** `php artisan make:request StorePostRequest`
+- **Use descriptive names** that indicate purpose (StorePostRequest, UpdateUserRequest)
+- **One FormRequest per action** for complex validation scenarios
+- **Keep validation logic centralized** and reusable
+
+# Essential Methods — DO
+- **rules()** - define validation rules array
+- **messages()** - customize error messages for better UX
+- **authorize()** - determine if user can make this request
+- **withValidator()** - add custom validation logic
+- **prepareForValidation()** - modify input before validation
+
+# Validation Rules — DO
+- **Use Laravel's built-in rules** (required, email, unique, etc.)
+- **Create custom rules** for complex validation logic
+- **Use rule objects** for reusable validation logic
+- **Validate file uploads** with file, image, mimes rules
+- **Use conditional validation** with required_if, required_unless
+- **Validate arrays** with array rules and dot notation
+
+# Error Messages — DO
+- **Provide clear, user-friendly messages** in messages() method
+- **Use attribute names** that match your frontend field names
+- **Include context** about why validation failed
+- **Use consistent language** across all validation messages
+- **Consider localization** for multi-language applications
+
+# Authorization — DO
+- **Check user permissions** in authorize() method
+- **Use policies** for complex authorization logic (see rule 50)
+- **Return boolean** from authorize() method
+- **Handle authorization failures** gracefully
+
+# Controller Integration — DO
+- **Type-hint FormRequest** in controller methods
+- **Use $request->validated()** to get clean, validated data
+- **Access validated data** as array, not individual properties
+- **Let Laravel handle validation** automatically
+
+# Advanced Patterns — DO
+- **Use form request inheritance** for shared validation logic
+- **Create base request classes** for common validation patterns
+- **Use traits** for reusable validation methods
+- **Validate nested arrays** with proper array validation rules
+
+# NEVER:
+- **Validate inline in controllers** beyond trivial one-offs
+- **Put business logic** in FormRequest classes
+- **Access request data** directly without validation
+- **Skip authorization checks** in authorize() method
+- **Return HTTP responses** from FormRequest methods
+- **Use complex database queries** in validation rules
+
+# See Also
+- Services & Controllers (15) - for controller integration
+- Policies & Authorization (50) - for complex authorization

@@ -1,0 +1,49 @@
+---
+description: |
+  GLOBAL — Laravel 12.x guardrails for PHP edits.
+  • Always prefer artisan generators over hand-editing.
+  • Follow Laravel's default directories and file names.
+  • Maintain clean separation of concerns across all layers.
+alwaysApply: true
+---
+# Do not modify or generate code in:
+- vendor/**
+- bootstrap/cache/** 
+- storage/**
+- node_modules/**
+- public/build/** (Vite assets)
+ 
+# Code Organization Principles
+- **One class per file** following PSR-4 autoloading standards
+- **Meaningful namespaces** that reflect directory structure
+- **Single Responsibility** - each class should have one clear purpose
+- **Dependency Injection** over static calls and facades where possible
+
+# When creating/updating code:
+- **Use Artisan generators first**, then minimally edit generated stubs
+- **Keep business logic out of routes**; use Controllers / Services / Jobs
+- **Use FormRequest for validation** (app/Http/Requests) - see rule 20
+- **Use API Resources for API shaping** (app/Http/Resources)
+- **Prefer Route Model Binding** in controllers instead of manual lookups
+- **Configuration via config/*; secrets via .env** (no hardcoded creds) - see rule 80
+- **Tests with Pest in tests/**; create with `php artisan make:test --pest` - see rule 70
+
+# Error Handling & Responses
+- **Use appropriate HTTP status codes** (200, 201, 400, 401, 403, 404, 422, 500)
+- **Return consistent JSON error responses** with message and optional details
+- **Log errors appropriately** for debugging without exposing sensitive data
+- **Handle exceptions gracefully** with try-catch blocks where needed
+
+# Performance & Security
+- **Use database transactions** for multi-step operations
+- **Validate all input** through FormRequest classes
+- **Sanitize output** to prevent XSS attacks
+- **Use proper authentication** and authorization (see rule 50)
+- **Optimize database queries** with eager loading and proper indexing
+
+# See Also
+- Artisan in Docker (05) - for command execution via Docker Compose
+- Models & Eloquent (10) - for database interactions
+- Services & Controllers (15) - for business logic organization
+- Requests & Validation (20) - for input validation
+- Testing with Pest (70) - for comprehensive testing
