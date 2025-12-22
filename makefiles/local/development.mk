@@ -37,3 +37,4 @@ bash-database:
 bash-proxy:
 	@echo "🐚 Entering proxy service bash shell..."
 	docker compose --env-file .compose.local.env exec proxy-server bash
+

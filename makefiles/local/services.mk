@@ -39,4 +39,7 @@ logs:
 queue-worker:
 	@echo "⚡ Starting queue worker..."
 	@echo "TODO: Implement queue worker command"
-	# docker compose --env-file .compose.local.env exec backend php artisan queue:work
+	docker compose --env-file .compose.local.env exec backend php artisan queue:work
+
+reverb:
+	@docker compose --env-file .compose.local.env exec app php artisan reverb:start --port=6001 --debug
