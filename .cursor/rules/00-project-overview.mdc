@@ -1,0 +1,83 @@
+---
+description: HomeOrganizer App — always-on project context (goals, scope, constraints)
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# HomeOrganizer App — Project Context (Always Apply)
+
+## One-liner
+A collaborative home inventory/location organizer: users map a home into deeply nested containers (sections) and attach items (with photos) so they can quickly find where things are stored.
+
+## Primary goals
+- Make it easy to record **where items are placed** in a home via a **nested container hierarchy**.
+- Support **collaboration** (shared projects) with **realtime updates**.
+- Provide a **visual navigation canvas** (infinite-ish grid, draw rectangles) + a **details sidebar**.
+- Support **image uploads** for items; optional AI suggests labels/descriptions but user is the source of truth.
+
+## Tech stack (fixed)
+- Backend: Laravel 12.x
+- Mobile: Flutter
+- Realtime: WebSockets via Laravel Reverb
+
+## Core domain concepts (use these terms consistently)
+- **Project**: a home/workspace (e.g., "Home 1").
+- **Member**: a user who has access to a project.
+- **Role**: `owner`, `editor`, `viewer`.
+- **Section**: a container/location node in a tree (floor/room/cabinet/box/etc.).
+- **Item**: a stored object that belongs to exactly one section (its current location).
+- **Asset**: uploaded media (photos) attached to an item (and optionally section, if needed later).
+
+## Structure rules (hard requirements)
+- Sections form a **tree** (parent-child).
+- Must support **very deep nesting** (target: 100+ levels).
+- A section has a user-editable **label/name**.
+- An item belongs to **exactly one section** at a time.
+- Sharing is **per project**, with clear role permissions.
+
+## MVP UI behavior (high-level)
+- Provide an **infinite-ish grid/canvas** similar to diagrams-style apps.
+- MVP shapes: **rectangles only**.
+- Selecting / zooming into a section updates an **interactive sidebar** that shows:
+  - child sections
+  - items in the selected section
+- Canvas is primarily for navigation + spatial mapping; sidebar is for detail CRUD.
+
+## Realtime collaboration expectations
+- Realtime should reflect multi-user changes quickly (no manual refresh).
+- Events that should broadcast in MVP:
+  - section create/update/move/delete
+  - item create/update/move/delete
+  - membership/role changes (optional if MVP time is tight)
+
+## AI analyzer (optional feature)
+- AI can suggest:
+  - item label/title
+  - short description
+- User can **override/correct** AI output at any time.
+- Store AI output as **suggestion metadata**, not as authoritative truth.
+
+## Non-goals (avoid inventing these unless explicitly requested)
+- Complex diagramming features (many shape types, constraints, snapping, connectors)
+- Offline-first sync
+- Full asset DAM / advanced inventory accounting (prices, depreciation, barcode scanning)
+- Overly complex permission systems beyond owner/editor/viewer
+
+## Implementation guidance for AI coding assistance
+- Keep solutions **MVP-first**: minimal tables, minimal API surface, minimal UI complexity.
+- Prefer approaches that scale to deep nesting:
+  - Tree modeling must not assume shallow depth.
+  - Avoid designs that require loading the entire tree for basic operations.
+- Do not introduce new major tech (e.g., GraphQL, microservices) unless explicitly asked.
+- Do not claim features exist unless they were stated in this document or explicitly added by the user.
+
+## Terminology mapping examples
+- "Home" == Project
+- "Floor / Room / Cabinet / Box" == Section (different labels, same model)
+- "Thing stored" == Item
+
+## Output expectations when you generate plans/docs
+- Be concrete: name entities, relationships, and invariants.
+- Prefer tables and bullet lists over long prose.
+- Call out assumptions explicitly if something is missing.

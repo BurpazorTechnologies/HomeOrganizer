@@ -1,15 +1,14 @@
-x-environment: &environment
-  environment:
-    - APP_NAME="HomeOrganizer"
-    - DB_DATABASE=homeorganizerdb
-    - DB_USERNAME=homeorganizerdb_user
-    - DB_PASSWORD=homeorganizerDbPassword
-    - PG_DB_DATABASE=homeorganizerdb_pg
-    - PG_DB_DATABASE_TEST=homeorganizerdb_pg_testing
-    - PG_DB_USERNAME=homeorganizerdb_pg_user
-    - PG_DB_PASSWORD=homeorganizerDbPgPassword
-    - POSTGRES_USER=postgres
-    - POSTGRES_PASSWORD=superSecureRootPass
+x-common-env: &common-env
+  APP_NAME: HomeOrganizer
+  DB_DATABASE: homeorganizerdb
+  DB_USERNAME: homeorganizerdb_user
+  DB_PASSWORD: homeorganizerDbPassword
+  PG_DB_DATABASE: homeorganizerdb_pg
+  PG_DB_DATABASE_TEST: homeorganizerdb_pg_testing
+  PG_DB_USERNAME: homeorganizerdb_pg_user
+  PG_DB_PASSWORD: homeorganizerDbPgPassword
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: superSecureRootPass
 
 x-common-attributes: &common-attributes
   init: true
@@ -18,27 +17,89 @@ x-common-attributes: &common-attributes
     - homeorganizer
 
 services:
-  app:
+  backend:
     build:
       context: .
       dockerfile: _docker/app/Dockerfile
-    image: 'homeorganizer'
-    <<: [*common-attributes, *environment]
+      target: backend
+    image: 'homeorganizer-backend'
+    <<: *common-attributes
+    environment:
+      <<: *common-env
     ports:
-      - '80:80'
-      - '443:443'
-      - '9001:9001'
-      - '5173:5173'
-      - '8080:8080'
       - '6001:6001'
-    command: /bin/bash
+      - '8080:8080'
+      - '9001:9001'
     volumes:
-      - './laravel:/var/www/html'
+      - './backend:/var/www/html'
+      - 'homeorganizer-nginx-ssl:/etc/nginx/ssl'
     depends_on:
       rds:
         condition: service_started
       postgres:
         condition: service_healthy
+
+  proxy-server:
+    build:
+      context: .
+      dockerfile: _docker/app/Dockerfile
+      target: proxy
+    image: 'homeorganizer-proxy'
+    <<: *common-attributes
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - './backend:/var/www/html:ro'
+      - './_docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro'
+      - './_docker/nginx/conf/:/etc/nginx/conf.d:ro'
+      - './_docker/nginx/server/server.conf:/etc/nginx/sites-available/default:ro'
+      - 'homeorganizer-nginx-ssl:/etc/nginx/ssl:ro'
+    command: >
+      bash -lc '
+        while [ ! -f /etc/nginx/ssl/nginx-selfsigned.key ] || [ ! -f /etc/nginx/ssl/nginx-selfsigned.crt ]; do
+          echo "Waiting for SSL certs in /etc/nginx/ssl ..." ;
+          sleep 1 ;
+        done ;
+        exec /usr/sbin/nginx -g "daemon off;"
+      '
+    depends_on:
+      - backend
+
+  node:
+    image: 'node:20.11.1'
+    <<: *common-attributes
+    working_dir: /var/www/html
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    environment:
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
+      NPM_CONFIG_REGISTRY: "https://registry.npmjs.org/"
+      YARN_CACHE_FOLDER: "/usr/local/share/.cache/yarn"
+    ports:
+      - '5173:5173'
+    volumes:
+      - './backend:/var/www/html'
+      - 'homeorganizer-node-modules:/var/www/html/node_modules'
+      - 'homeorganizer-nginx-ssl:/etc/nginx/ssl:ro'
+      - 'homeorganizer-yarn-cache:/usr/local/share/.cache/yarn'
+    command: >
+      sh -lc '
+        corepack enable &&
+        corepack prepare yarn@1.22.22 --activate &&
+        while [ ! -f /etc/nginx/ssl/nginx-selfsigned.key ] || [ ! -f /etc/nginx/ssl/nginx-selfsigned.crt ]; do
+          echo "Waiting for SSL certs in /etc/nginx/ssl ..." ;
+          sleep 1 ;
+        done &&
+        yarn config set registry "https://registry.npmjs.org/" &&
+        yarn config set network-timeout 600000 -g &&
+        yarn config set network-concurrency 1 -g &&
+        yarn install -v --no-lockfile --network-timeout 600000 &&
+        yarn dev
+      '
+    depends_on:
+      - backend
 
   rds:
     image: 'mariadb:11.5.2'
@@ -130,6 +191,9 @@ volumes:
   homeorganizer-postgres:
   homeorganizer-redis:
   homeorganizer-redis-insight-data: { }
+  homeorganizer-nginx-ssl:
+  homeorganizer-node-modules:
+  homeorganizer-yarn-cache:
 
 networks:
   homeorganizer:

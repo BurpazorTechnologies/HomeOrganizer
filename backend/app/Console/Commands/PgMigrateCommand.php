@@ -1,31 +1,22 @@
 <?php
 
-namespace App\Console\Commands\Chat;
+namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 
-class MigrateCommand extends Command
+class PgMigrateCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * Options mirror the core migrate commands so teams can request a "fresh" rebuild
-     * or seed data in one shot: `php artisan chat:migrate --fresh --seed`.
-     */
-    protected $signature = 'chat:migrate {--fresh : Drop chat tables before migrating}';
+    protected $signature = 'pg:migrate {--fresh : Drop pg tables before migrating}';
 
-    /**
-     * The console command description.
-     */
-    protected $description = 'Run chat/Postgres migrations';
+    protected $description = 'Run Postgres migrations';
 
     public function handle(): int
     {
         $fresh = (bool) $this->option('fresh');
 
         $this->components->info(sprintf(
-            'Running chat migrations on pgsql (%s)...',
+            'Running migrations on pgsql (%s)...',
             $fresh ? 'fresh' : 'standard'
         ));
 
@@ -44,7 +35,7 @@ class MigrateCommand extends Command
             $this->line($output);
         }
 
-        $this->components->info('Chat migrations completed.');
+        $this->components->info('Postgres migrations completed.');
 
         return $exitCode === 0 ? Command::SUCCESS : Command::FAILURE;
     }

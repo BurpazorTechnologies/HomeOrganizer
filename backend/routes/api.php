@@ -7,7 +7,6 @@ $apiPath = __DIR__ . '/api';
 require $apiPath . '/lab.php';
 require $apiPath . '/utility.php';
 require $apiPath . '/guest.php';
-require $apiPath . '/admin.php';
 require $apiPath . '/client.php';
 
 Route::get('up', function() {

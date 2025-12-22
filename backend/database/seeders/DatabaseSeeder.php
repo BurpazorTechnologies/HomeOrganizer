@@ -13,8 +13,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(RbacSeeder::class);
-        $this->call(AdminUserSeeder::class);
-        $this->call(ClientUserSeeder::class);
+
     }
 }

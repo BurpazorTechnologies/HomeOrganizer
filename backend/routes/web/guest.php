@@ -12,17 +12,6 @@ use App\Http\Controllers\Client\Auth\PasswordResetLinkController as ClientPasswo
 use App\Http\Controllers\Admin\Auth\AuthenticatedSessionController as AdminAuthenticatedSessionController;
 use App\Http\Controllers\Client\Auth\AuthenticatedSessionController as ClientAuthenticatedSessionController;
 
-Route::middleware('guest:client,admin')->group(function () {
-    // Admin Login
-    Route::prefix('admin')->group(function () {
-        Route::get('login', [AdminAuthenticatedSessionController::class, 'create'])
-            ->name('admin.login');
-
-        Route::post('login', [AdminAuthenticatedSessionController::class, 'store'])
-            ->name('admin.login.store');
-    });
-});
-
 Route::prefix('client')->group(function () {
     Route::get('login', [ClientAuthenticatedSessionController::class, 'create'])
     ->name('client.login');
