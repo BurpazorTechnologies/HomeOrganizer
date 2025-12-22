@@ -1,0 +1,76 @@
+@layer components {
+    // Base button styles
+    .btn {
+        @apply font-medium rounded-lg;
+        border-radius: 10px;
+        padding: 0.625rem 1.25rem; // Default padding for extra small screens
+        transition: all 0.2s ease-in-out;
+
+        // Small screens (640px and up)
+        @media (min-width: var(--screen-sm)) {
+            padding: 0.75rem 1.5rem;
+        }
+
+        // Medium screens (768px and up)
+        @media (min-width: var(--screen-md)) {
+            padding: 0.875rem 1.75rem;
+        }
+
+        // Large screens (1024px and up)
+        @media (min-width: var(--screen-lg)) {
+            padding: 1rem 2rem;
+        }
+
+        // Extra large screens (1280px and up)
+        @media (min-width: var(--screen-xl)) {
+            padding: 1.125rem 2.25rem;
+        }
+
+        // 2XL screens (1536px and up)
+        @media (min-width: var(--screen-2xl)) {
+            padding: 1.25rem 2.5rem;
+        }
+
+        // 3XL screens (1920px and up)
+        @media (min-width: var(--screen-3xl)) {
+            padding: 1.375rem 2.75rem;
+        }
+
+        // 4XL screens (2560px and up)
+        @media (min-width: var(--screen-4xl)) {
+            padding: 1.5rem 3rem;
+        }
+
+        // 5XL screens (3840px and up)
+        @media (min-width: var(--screen-5xl)) {
+            padding: 1.75rem 3.5rem;
+        }
+
+        &:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    }
+
+    // Primary button variant
+    .btn-primary {
+        @extend .btn;
+        background-color: var(--color-primary-dark);
+        color: var(--color-primary-content);
+
+        &:hover {
+            background-color: var(--color-primary-variant);
+        }
+    }
+
+    // Primary outline button variant
+    .btn-primary-outline {
+        @extend .btn;
+        border: 1px solid var(--color-primary);
+        color: var(--color-primary);
+
+        &:hover {
+            background-color: var(--color-primary-focus);
+            color: var(--color-primary-content);
+        }
+    }
+}

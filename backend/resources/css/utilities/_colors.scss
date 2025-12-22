@@ -1,0 +1,92 @@
+@theme {
+    /* Primary Brand Colors - Teal Green */
+    --color-primary: #00b894;
+    --color-primary-default: var(--color-primary);
+    --color-primary-50: #172321;
+    --color-primary-light: #1fd1aa;
+    --color-primary-dark: #007b63;
+    --color-primary-focus: #009e80;
+    --color-primary-content: #e0e0e0;
+
+    /* Secondary Brand Colors - Slate Blue */
+    --color-secondary: #4b6584;
+    --color-secondary-default: var(--color-secondary);
+    --color-secondary-50: #181d22;
+    --color-secondary-light: #5f7ca2;
+    --color-secondary-dark: #364857;
+    --color-secondary-focus: #455a76;
+    --color-secondary-content: #e0e0e0;
+
+    /* Primary Variant - Darker Teal */
+    --color-primary-variant: #079992;
+    --color-primary-variant-default: var(--color-primary-variant);
+    --color-primary-variant-50: #162121;
+    --color-primary-variant-light: #0abfb6;
+    --color-primary-variant-dark: #05706a;
+    --color-primary-variant-focus: #068783;
+    --color-primary-variant-content: #e0e0e0;
+
+    /* Complementary - Indigo */
+    --color-complementary: #4B0082;
+    --color-complementary-default: var(--color-complementary);
+    --color-complementary-50: #19121e;
+    --color-complementary-light: #818CF8;
+    --color-complementary-dark: #36005f;
+    --color-complementary-focus: #400073;
+    --color-complementary-content: #e0e0e0;
+
+    /* Neutral Accent - Slate Grey */
+    --color-neutral-accent: #636e72;
+    --color-neutral-accent-default: var(--color-neutral-accent);
+    --color-neutral-accent-light: #7d8b8f;
+    --color-neutral-accent-dark: #4a5356;
+    --color-neutral-accent-focus: #556064;
+    --color-neutral-accent-content: #e0e0e0;
+
+    /* Neutral Grayscale - Refined for better contrast */
+    --color-neutral: #2d3436;
+    --color-neutral-default: var(--color-neutral);
+    --color-neutral-50: #161819;
+    --color-neutral-light: #495052;
+    --color-neutral-dark: #1e2224;
+    --color-neutral-focus: #292e30;
+    --color-neutral-content: #e0e0e0;
+
+    /* Surface Backgrounds - Dark for night mode */
+    --color-surface: #1a1d1e;
+    --color-surface-default: var(--color-surface);
+    --color-surface-50: #131516;
+    --color-surface-light: #222628;
+    --color-surface-dark: #0f1112;
+    --color-surface-focus: #1c2022;
+    --color-surface-content: #dcdcdc;
+
+    /* Status Colors - Adjusted for dark theme */
+    --color-success: #20bf6b;
+    --color-success-default: var(--color-success);
+    --color-success-light: #26d07c;
+    --color-success-dark: #18a15b;
+    --color-success-focus: #1cac61;
+    --color-success-content: #e0e0e0;
+
+    --color-warning: #f39c12;
+    --color-warning-default: var(--color-warning);
+    --color-warning-light: #f7b731;
+    --color-warning-dark: #d68910;
+    --color-warning-focus: #e67e22;
+    --color-warning-content: #e0e0e0;
+
+    --color-error: #eb4d4b;
+    --color-error-default: var(--color-error);
+    --color-error-light: #ff5e5b;
+    --color-error-dark: #c43a38;
+    --color-error-focus: #d44240;
+    --color-error-content: #e0e0e0;
+
+    --color-info: #3498db;
+    --color-info-default: var(--color-info);
+    --color-info-light: #45aaf2;
+    --color-info-dark: #2980b9;
+    --color-info-focus: #2e86c1;
+    --color-info-content: #e0e0e0;
+}

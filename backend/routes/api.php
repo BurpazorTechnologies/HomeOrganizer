@@ -1,18 +1,18 @@
 <?php
-
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\v1\UtilityController;
 use App\Http\Controllers\Api\VersionController;
 
 $apiPath = __DIR__ . '/api';
 
-require $apiPath . '/v1/auth.php';
-require $apiPath . '/v1/user.php';
+require $apiPath . '/lab.php';
+require $apiPath . '/utility.php';
+require $apiPath . '/guest.php';
+require $apiPath . '/admin.php';
+require $apiPath . '/client.php';
 
-Route::get('/health', [UtilityController::class, 'health']);
-
-Route::get('/version', [VersionController::class, 'getVersion']);
-
-Route::middleware('debug.enabled')->group(function () {
-    Route::get('/status', [UtilityController::class, 'status']);
+Route::get('up', function() {
+    return response()->json(['message' => 'health check: success!']);
 });
+
+Route::get('version', [VersionController::class, 'getVersion']);
+

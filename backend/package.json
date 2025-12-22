@@ -1,17 +1,41 @@
 {
-    "$schema": "https://json.schemastore.org/package.json",
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "build": "vue-tsc --noEmit && vite build",
+        "check": "vue-tsc --noEmit",
+        "dev:type-check": "concurrently \"vite\" \"vue-tsc --noEmit --watch\""
     },
     "devDependencies": {
+        "@inertiajs/vue3": "^2.0.8",
+        "@tailwindcss/forms": "^0.5.10",
+        "@tailwindcss/postcss": "^4.1.4",
         "@tailwindcss/vite": "^4.0.0",
-        "axios": "^1.11.0",
+        "@types/node": "^22.15.3",
+        "@vitejs/plugin-vue": "^5.2.3",
+        "@vue/tsconfig": "^0.7.0",
+        "autoprefixer": "^10.4.21",
+        "axios": "^1.9.0",
         "concurrently": "^9.0.1",
-        "laravel-vite-plugin": "^2.0.0",
-        "tailwindcss": "^4.0.0",
-        "vite": "^7.0.7"
+        "laravel-echo": "^1.19.0",
+        "laravel-vite-plugin": "^1.2.0",
+        "postcss": "^8.5.3",
+        "pusher-js": "^8.4.0",
+        "sass": "^1.87.0",
+        "tailwindcss": "^4.1.4",
+        "typescript": "^5.8.3",
+        "vite": "^6.3.5",
+        "vue": "^3.5.13",
+        "vue-tsc": "^2.2.10"
+    },
+    "dependencies": {
+        "@fortawesome/fontawesome-free": "^6.7.2",
+        "@fortawesome/fontawesome-svg-core": "^6.7.2",
+        "fortawesome": "^0.0.1-security",
+        "gsap": "^3.13.0",
+        "jwt-decode": "^4.0.0",
+        "shiki": "^3.4.2",
+        "sweetalert2": "^11.19.1"
     }
 }

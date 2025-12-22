@@ -1,0 +1,14 @@
+@theme {
+    --font-montserrat: "Montserrat", sans-serif;
+    --font-roboto: "Roboto", sans-serif;
+    --font-nunito-sans: "Nunito Sans", sans-serif;
+    --font-jetbrains-mono: "JetBrains Mono", monospace;
+    --font-coral-pixels: "Coral Pixels", cursive;
+}
+
+@layer utilities {
+    .font-coral-pixels-light {
+        font-family: var(--font-coral-pixels), cursive;
+        filter: invert(1) hue-rotate(180deg);
+    }
+}

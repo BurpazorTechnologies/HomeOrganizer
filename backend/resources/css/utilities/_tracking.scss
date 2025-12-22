@@ -1,0 +1,79 @@
+@theme {
+    /* Letter Spacing */
+    --tracking-h1-xs: -0.02em;
+    --tracking-h1-md: -0.025em;
+    --tracking-h1-lg: -0.03em;
+    --tracking-h1-xl: -0.035em;
+    --tracking-h1-3xl: -0.04em;
+    --tracking-h1-4xl: -0.045em;
+
+    --tracking-h2-xs: -0.015em;
+    --tracking-h2-md: -0.02em;
+    --tracking-h2-lg: -0.025em;
+    --tracking-h2-xl: -0.03em;
+    --tracking-h2-3xl: -0.035em;
+    --tracking-h2-4xl: -0.04em;
+
+    --tracking-h3-xs: -0.01em;
+    --tracking-h3-md: -0.015em;
+    --tracking-h3-lg: -0.02em;
+    --tracking-h3-xl: -0.025em;
+    --tracking-h3-3xl: -0.03em;
+    --tracking-h3-4xl: -0.035em;
+
+    --tracking-h4-xs: -0.005em;
+    --tracking-h4-md: -0.01em;
+    --tracking-h4-lg: -0.015em;
+    --tracking-h4-xl: -0.02em;
+    --tracking-h4-3xl: -0.025em;
+    --tracking-h4-4xl: -0.03em;
+
+    --tracking-h5-xs: 0;
+    --tracking-h5-md: -0.005em;
+    --tracking-h5-lg: -0.01em;
+    --tracking-h5-xl: -0.015em;
+    --tracking-h5-3xl: -0.02em;
+    --tracking-h5-4xl: -0.025em;
+
+    --tracking-h6-xs: 0;
+    --tracking-h6-md: 0;
+    --tracking-h6-lg: -0.005em;
+    --tracking-h6-xl: -0.01em;
+    --tracking-h6-3xl: -0.015em;
+    --tracking-h6-4xl: -0.02em;
+
+    --tracking-body-xs: 0;
+    --tracking-body-md: 0;
+    --tracking-body-lg: 0;
+    --tracking-body-xl: 0;
+    --tracking-body-3xl: 0;
+    --tracking-body-4xl: 0;
+
+    --tracking-body-large-xs: -0.005em;
+    --tracking-body-large-md: -0.005em;
+    --tracking-body-large-lg: -0.005em;
+    --tracking-body-large-xl: -0.01em;
+    --tracking-body-large-3xl: -0.01em;
+    --tracking-body-large-4xl: -0.015em;
+
+    --tracking-body-small-xs: 0.01em;
+    --tracking-body-small-md: 0.005em;
+    --tracking-body-small-lg: 0.005em;
+    --tracking-body-small-xl: 0;
+    --tracking-body-small-3xl: 0;
+    --tracking-body-small-4xl: 0;
+
+    --tracking-small-xs: 0.02em;
+    --tracking-small-md: 0.015em;
+    --tracking-small-lg: 0.01em;
+    --tracking-small-xl: 0.005em;
+    --tracking-small-3xl: 0.005em;
+    --tracking-small-4xl: 0;
+
+    --tracking-footer-xs: 0.02em;
+    --tracking-footer-md: 0.015em;
+    --tracking-footer-lg: 0.01em;
+    --tracking-footer-xl: 0.01em;
+    --tracking-footer-3xl: 0.005em;
+    --tracking-footer-4xl: 0.005em;
+}

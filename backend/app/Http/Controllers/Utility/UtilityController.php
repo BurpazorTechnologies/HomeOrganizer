@@ -2,11 +2,20 @@
 
 namespace App\Http\Controllers\Utility;
 
+use Illuminate\View\View;
+use Illuminate\Support\Str;
+use Illuminate\Mail\Message;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Artisan;
-use App\Models\User;
+use Spatie\ShikiPhp\Shiki;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use App\Events\TestEvent;
 use App\Http\Controllers\Controller;
 
@@ -17,7 +26,7 @@ class UtilityController extends Controller
         $sections = [
             [
                 'title' => 'Core Utilities',
-                'description' => '',
+                'description' => 'Endpoints for inspecting the app state and clearing caches.',
                 'links' => [
                     [
                         'label' => 'Current Settings',
@@ -39,13 +48,133 @@ class UtilityController extends Controller
                     ],
                 ],
             ],
+            [
+                'title' => 'Email Utilities',
+                'description' => 'Preview or trigger utility emails.',
+                'links' => [
+                    [
+                        'label' => 'Send Test Email',
+                        'description' => 'Dispatches mails.utility.email to the configured test inbox.',
+                        'method' => 'GET',
+                        'url' => route('utility.email.test'),
+                    ],
+                    [
+                        'label' => 'Preview Admin Forward Mail',
+                        'description' => 'Renders the forward-mail template (append ?sendEmail=1 to actually send).',
+                        'method' => 'GET',
+                        'url' => route('utility.email.preview.admin', ['emailView' => 'forward-mail']),
+                    ],
+                    [
+                        'label' => 'Preview Admin Automated Reply',
+                        'description' => 'Renders the automated-reply template with sample data.',
+                        'method' => 'GET',
+                        'url' => route('utility.email.preview.admin', ['emailView' => 'automated-reply']),
+                    ],
+                ],
+            ],
+            [
+                'title' => 'UI Sandbox',
+                'description' => 'Visual regression helpers and theme previews.',
+                'links' => [
+                    [
+                        'label' => 'Code Highlighter Check',
+                        'description' => 'Runs a sample snippet through Shiki.',
+                        'method' => 'GET',
+                        'url' => route('utility.ui.checkCodeHighlighter'),
+                    ],
+                    [
+                        'label' => 'UI Preview',
+                        'description' => 'Inertia playground for shared UI components.',
+                        'method' => 'GET',
+                        'url' => route('utility.ui.preview'),
+                    ],
+                    [
+                        'label' => 'Typography Theme Component',
+                        'description' => 'Renders the typography component theme demo.',
+                        'method' => 'GET',
+                        'url' => route('utility.ui.theme', ['component' => 'typography']),
+                    ],
+                ],
+            ],
+            [
+                'title' => 'Admin Helpers',
+                'description' => 'Endpoints intended for authenticated admin operators.',
+                'links' => [
+                    [
+                        'label' => 'Fetch Admin API Token',
+                        'description' => 'Returns a Sanctum token for the current admin session.',
+                        'method' => 'GET',
+                        'url' => route('utility.admin.api-token'),
+                    ],
+                    [
+                        'label' => 'Roles & Permissions Snapshot',
+                        'description' => 'Inertia UI listing current Spatie roles and permissions grouped per guard.',
+                        'method' => 'GET',
+                        'url' => route('utility.admin.rbac.roles-permissions'),
+                    ],
+                    [
+                        'label' => 'JWT RBAC Testing',
+                        'description' => 'JWT-based role and permission testing with token display and decryption.',
+                        'method' => 'GET',
+                        'url' => route('utility.admin.rbac.jwt.roles-permissions'),
+                    ],
+                ],
+            ],
+            [
+                'title' => 'Chat Tools',
+                'description' => 'Debug endpoints for the real-time chat experience.',
+                'links' => [
+                    [
+                        'label' => 'Chat as Guest',
+                        'description' => 'Loads the guest chat UI.',
+                        'method' => 'GET',
+                        'url' => route('utility.chat.guest'),
+                    ],
+                    [
+                        'label' => 'Chat as Client',
+                        'description' => 'Loads the client chat UI.',
+                        'method' => 'GET',
+                        'url' => route('utility.chat.client'),
+                    ],
+                    [
+                        'label' => 'Chat as Admin',
+                        'description' => 'Loads the admin chat dashboard.',
+                        'method' => 'GET',
+                        'url' => route('utility.chat.admin'),
+                    ],
+                    [
+                        'label' => 'Dispatch Test Notification',
+                        'description' => 'Triggers a fake chat notification.',
+                        'method' => 'GET',
+                        'url' => route('utility.chat.test.notification'),
+                    ],
+                    [
+                        'label' => 'Send Chat Message',
+                        'description' => 'POST utility endpoint used by the UI to send messages.',
+                        'method' => 'POST',
+                        'url' => route('utility.chat.send'),
+                    ],
+                ],
+            ],
+            [
+                'title' => 'Tracking Tools',
+                'description' => 'Inspect the event pipeline and front-end instrumentation state.',
+                'links' => [
+                    [
+                        'label' => 'Tracking Preview',
+                        'description' => 'Loads the tracking debugger with sample sessions and events.',
+                        'method' => 'GET',
+                        'url' => route('utility.tracking.preview'),
+                    ],
+                ],
+            ],
         ];
 
         return view('utility.index', [
             'sections' => $sections,
         ]);
     }
-    
+
     public function currentSettings(): JsonResponse
     {
         return response()->json([
@@ -95,17 +224,276 @@ class UtilityController extends Controller
             ]
         ]);
     }
-    
-    public function showUsers(): View
+
+    public function emailTest(): JsonResponse
     {
-        $users = User::query()
-            ->orderBy('id')
+        $recipientEmail = config('mail.test.to.address', 'admin@homeorganizer.com');
+        $recipientName = 'Recipient Name';
+
+        try {
+            Mail::send('mails.utility.email', [], function (Message $message) use ($recipientEmail, $recipientName) {
+                $message->to($recipientEmail, $recipientName)
+                    ->subject('My New Test');
+                $message->from(config('mail.from.address'), 'Your Name');
+            });
+
+            return response()->json([
+                'message' => 'Email sent successfully!',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error sending email.',
+                'error' => $e->getMessage(),
+            ], 403);
+        }
+    }
+
+    public function showPreview(): InertiaResponse
+    {
+        return Inertia::render('Utility/Preview', []);
+    }
+
+    public function showThemeComponent(string $component): InertiaResponse
+    {
+        $component = Str::ucfirst($component);
+        return Inertia::render("Utility/Theme/{$component}", []);
+    }
+
+    public function getApiToken(): JsonResponse
+    {
+        Auth::shouldUse('admin');
+
+        /** @var \App\Models\Admin\User|null $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'requires an authenticated admin user. please login first.',
+                'success' => 'false'
+            ], 400);
+        }
+
+        $token = $user->createToken('Admin API Token')->plainTextToken;
+
+        return response()->json([
+            'api-token' => $token,
+            'user' => $user,
+            'success' => 'true'
+        ]);
+    }
+
+    public function emailPreviewAdmin(string $emailView)
+    {
+        $data = [
+            'sample' => 'value'
+        ];
+
+        switch ($emailView) {
+            case 'forward-mail':
+                $data = [
+                    'mail' => (object)[
+                        'sender_name' => 'John Doe',
+                        'sender_email' => 'john@example.com',
+                        'subject' => 'Test Contact Form Submission',
+                        'message' => 'This is a sample message from the contact form. It can contain multiple lines of text to demonstrate how the email template handles message formatting.',
+                        'additional_details' => [
+                            'phone' => '+1234567890',
+                            'company' => 'Example Corp',
+                            'preferred_contact' => 'email'
+                        ]
+                    ]
+                ];
+                $view = 'mails.admin.contact.forward-mail';
+                break;
+            case 'automated-reply':
+                $data = [];
+                $view = 'mails.admin.contact.automated-reply';
+                break;
+            default:
+                $view = 'mails.utility.email';
+                break;
+        }
+
+        if (request()->query('sendEmail') == 1 || request()->query('sendEmail') == 'true') {
+            $recipientEmail = config('mail.test.to.address', 'admin@homeorganizer.com');
+            $recipientName = 'Recipient Name';
+
+            try {
+                Mail::send($view, $data, function (Message $message) use ($recipientEmail, $recipientName) {
+                    $message->to($recipientEmail, $recipientName)
+                        ->subject('Your Custom Email Subject');
+                    $message->from(config('mail.from.address'), 'Your Name');
+                });
+
+                return view($view, $data);
+            } catch (\Exception $e) {
+                return response()->json(['status' => 'Failed to send email', 'error' => $e->getMessage()], 500);
+            }
+        }
+
+        return view($view, $data);
+    }
+
+    public function checkCodeHighlighter()
+    {
+        return Shiki::highlight(
+            code: '<?php echo "Hello World"; ?>',
+            language: 'php',
+            theme: 'github-light',
+        );
+    }
+
+    public function getRolesPermissions(): InertiaResponse
+    {
+        // Check if user is authenticated as either admin or client
+        $adminUser = Auth::guard('admin')->user();
+        $clientUser = Auth::guard('client')->user();
+
+        if (!$adminUser && !$clientUser) {
+            return Inertia::render('Error', [
+                'status' => 401,
+                'message' => 'requires an authenticated user (admin or client)',
+            ]);
+        }
+
+        // Set the active guard based on which user is authenticated
+        if ($adminUser) {
+            Auth::shouldUse('admin');
+        } else {
+            Auth::shouldUse('client');
+        }
+
+        /** @var \App\Models\Admin\User|\App\Models\Client\User|null $user */
+        $user = Auth::user();
+
+        $roles = Role::query()
+            ->select(['id', 'name', 'guard_name', 'created_at', 'updated_at'])
+            ->orderBy('guard_name')
+            ->orderBy('name')
             ->get();
 
-        return view('utility.users', [
-            'users' => $users,
+        $permissions = Permission::query()
+            ->select(['id', 'name', 'guard_name', 'created_at', 'updated_at'])
+            ->orderBy('guard_name')
+            ->orderBy('name')
+            ->get();
+
+        $guards = array_keys(config('auth.guards', []));
+        $activeGuard = null;
+        $activeUser = null;
+
+        foreach ($guards as $guard) {
+            $guardUser = Auth::guard($guard)->user();
+            if ($guardUser) {
+                $activeGuard = $guard;
+                if ($guardUser instanceof Model) {
+                    $guardUser->loadMissing('roles');
+                }
+                $activeUser = $guardUser;
+                break;
+            }
+        }
+
+        $currentUser = null;
+
+        if ($activeUser instanceof Model && method_exists($activeUser, 'getRoleNames')) {
+            $userPermissions = method_exists($activeUser, 'getAllPermissions')
+                ? $activeUser->getAllPermissions()
+                : collect();
+
+            $currentUser = [
+                'id' => $activeUser->getKey(),
+                'email' => $activeUser->email,
+                'guard' => $activeGuard,
+                'roles' => $activeUser->roles->map(static function (Role $role) {
+                    return [
+                        'id' => $role->id,
+                        'name' => $role->name,
+                        'guard_name' => $role->guard_name,
+                    ];
+                })->values(),
+                'permissions' => $userPermissions->map(static function (Permission $permission) {
+                    return [
+                        'id' => $permission->id,
+                        'name' => $permission->name,
+                        'guard_name' => $permission->guard_name,
+                    ];
+                })->values(),
+            ];
+        }
+
+        return Inertia::render('Utility/RBAC/axios/RolesAndPermissions', [
+            'roles' => $roles,
+            'permissions' => $permissions,
+            'generatedAt' => now()->toDateTimeString(),
+            'currentUser' => $currentUser,
+        ]);
+    }
+
+    public function getJwtRolesPermissions(): InertiaResponse
+    {
+        // Check if user is authenticated as either admin or client
+        $adminUser = Auth::guard('admin')->user();
+        $clientUser = Auth::guard('client')->user();
+
+        if (!$adminUser && !$clientUser) {
+            return Inertia::render('Error', [
+                'status' => 401,
+                'message' => 'requires an authenticated user (admin or client)',
+            ]);
+        }
+
+        // Set the active guard based on which user is authenticated
+        if ($adminUser) {
+            Auth::shouldUse('admin');
+        } else {
+            Auth::shouldUse('client');
+        }
+
+        /** @var \App\Models\Admin\User|\App\Models\Client\User|null $user */
+        $user = Auth::user();
+
+        // Get current user info with roles
+        $currentUser = null;
+        if ($user instanceof Model && method_exists($user, 'getRoleNames')) {
+            $user->loadMissing('roles');
+            $currentUser = [
+                'id' => $user->getKey(),
+                'email' => $user->email,
+                'guard' => $adminUser ? 'admin' : 'client',
+                'roles' => $user->roles->map(static function (Role $role) {
+                    return [
+                        'id' => $role->id,
+                        'name' => $role->name,
+                        'guard_name' => $role->guard_name,
+                    ];
+                })->values(),
+            ];
+        }
+
+        // Generate JWT token for authenticated user
+        $jwtService = app(\App\Services\JwtService::class)->forService('app');
+        $jwtToken = null;
+        if ($user) {
+            $tokenEnvelope = $jwtService->generateToken($user, [], [], [
+                'guard' => $adminUser ? 'admin' : 'client',
+                'context' => 'rbac-test',
+            ]);
+            $jwtToken = $tokenEnvelope['token'];
+        }
+
+        // Get JWT config
+        $jwtConfig = config('jwt.services.app', []);
+        $jwtSecret = $jwtConfig['secret_key'] ?? 'not configured';
+        $jwtAlgorithm = $jwtConfig['algorithm'] ?? 'HS256';
+
+        return Inertia::render('Utility/RBAC/jwt/RolesAndPermissions', [
+            'currentUser' => $currentUser,
+            'jwtToken' => $jwtToken,
+            'jwtConfig' => [
+                'secret_key' => $jwtSecret,
+                'algorithm' => $jwtAlgorithm,
+            ],
         ]);
     }
 }
-
-

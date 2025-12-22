@@ -1,0 +1,59 @@
+@utility container {
+    width: 100%;
+    padding: 0 2rem;
+    margin-left: auto;
+    margin-right: auto;
+
+    /* xs: 360px */
+    @media (min-width: 22.5rem) {
+
+    }
+
+    /* sm: 640px */
+    @media (min-width: 40rem) {
+        max-width: 40rem;
+    }
+
+    /* md: 768px */
+    @media (min-width: 48rem) {
+        max-width: 48rem;
+    }
+
+    /* lg: 1024px */
+    @media (min-width: 64rem) {
+        max-width: 64rem;
+    }
+
+    /* xl: 1280px */
+    @media (min-width: 80rem) {
+        max-width: 80rem;
+        padding-left: 5rem;
+        padding-right: 5rem;
+    }
+
+    /* 2xl: 1536px */
+    @media (min-width: 96rem) {
+        max-width: 96rem; 
+        padding-left: 7rem;
+        padding-right: 7rem;
+    }
+
+    /* 3xl: 1920px */
+    @media (min-width: 120rem) {
+        max-width: 120rem;
+        padding-left: 15rem;
+        padding-right: 15rem;
+    }
+
+    /* 4xl: 2560px */
+    @media (min-width: 160rem) {
+        max-width: 160rem;
+        padding-left: 30rem;
+        padding-right: 30rem;
+    }
+
+    /* 5xl: 3840px */
+    @media (min-width: 240rem) {
+        max-width: 160rem;
+    }
+}

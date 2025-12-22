@@ -1,0 +1,90 @@
+@theme {
+    /* Heading 1 - Primary Headings */
+    --text-h1-xs: 2rem;          /* 32px - Bold statement on mobile */
+    --text-h1-md: 2.5rem;        /* 40px - Mid-sized devices */
+    --text-h1-lg: 3rem;          /* 48px - Laptop/desktop */
+    --text-h1-xl: 3.5rem;        /* 56px - Large desktop */
+    --text-h1-3xl: 4.25rem;      /* 68px - 1080p/2K displays */
+    --text-h1-4xl: 5rem;         /* 80px - 4K displays */
+    --text-h1-5xl: 6rem;         /* 96px - 5K displays */
+    /* Heading 2 - Secondary Headings */
+    --text-h2-xs: 1.625rem;      /* 26px */
+    --text-h2-md: 2rem;          /* 32px */
+    --text-h2-lg: 2.375rem;      /* 38px */
+    --text-h2-xl: 2.75rem;       /* 44px */
+    --text-h2-3xl: 3.25rem;      /* 52px */
+    --text-h2-4xl: 3.75rem;      /* 60px */
+    --text-h2-5xl: 4.5rem;       /* 72px */
+    /* Heading 3 - Section Headings */
+    --text-h3-xs: 1.375rem;      /* 22px */
+    --text-h3-md: 1.625rem;      /* 26px */
+    --text-h3-lg: 1.875rem;      /* 30px */
+    --text-h3-xl: 2.125rem;      /* 34px */
+    --text-h3-3xl: 2.5rem;       /* 40px */
+    --text-h3-4xl: 2.875rem;     /* 46px */
+    --text-h3-5xl: 3.5rem;       /* 56px */
+    /* Heading 4 - Subsection Headings */
+    --text-h4-xs: 1.25rem;       /* 20px */
+    --text-h4-md: 1.375rem;      /* 22px */
+    --text-h4-lg: 1.5rem;        /* 24px */
+    --text-h4-xl: 1.75rem;       /* 28px */
+    --text-h4-3xl: 2rem;         /* 32px */
+    --text-h4-4xl: 2.25rem;      /* 36px */
+    --text-h4-5xl: 2.75rem;      /* 44px */
+    /* Heading 5 - Minor Headings */
+    --text-h5-xs: 1.125rem;      /* 18px */
+    --text-h5-md: 1.25rem;       /* 20px */
+    --text-h5-lg: 1.375rem;      /* 22px */
+    --text-h5-xl: 1.5rem;        /* 24px */
+    --text-h5-3xl: 1.75rem;      /* 28px */
+    --text-h5-4xl: 2rem;         /* 32px */
+    --text-h5-5xl: 2.5rem;       /* 40px */
+    /* Heading 6 - Small Headings */
+    --text-h6-xs: 1rem;          /* 16px */
+    --text-h6-md: 1.125rem;      /* 18px */
+    --text-h6-lg: 1.25rem;       /* 20px */
+    --text-h6-xl: 1.375rem;      /* 22px */
+    --text-h6-3xl: 1.5rem;       /* 24px */
+    --text-h6-4xl: 1.75rem;      /* 28px */
+    --text-h6-5xl: 2.25rem;      /* 36px */
+    /* Body Text - Primary Content */
+    --text-body-xs: 1rem;        /* 16px - Base size */
+    --text-body-md: 1rem;        /* 16px */
+    --text-body-lg: 1.0625rem;   /* 17px */
+    --text-body-xl: 1.125rem;    /* 18px */
+    --text-body-3xl: 1.25rem;    /* 20px */
+    --text-body-4xl: 1.375rem;   /* 22px */
+    --text-body-5xl: 1.5rem;     /* 24px */
+    /* Body Large - For emphasis or lead paragraphs */
+    --text-body-large-xs: 1.125rem;  /* 18px */
+    --text-body-large-md: 1.1875rem; /* 19px */
+    --text-body-large-lg: 1.25rem;   /* 20px */
+    --text-body-large-xl: 1.375rem;  /* 22px */
+    --text-body-large-3xl: 1.5rem;   /* 24px */
+    --text-body-large-4xl: 1.625rem; /* 26px */
+    --text-body-large-5xl: 1.875rem; /* 30px */
+    /* Body Small - For secondary content */
+    --text-body-small-xs: 0.875rem;  /* 14px */
+    --text-body-small-md: 0.875rem;  /* 14px */
+    --text-body-small-lg: 0.9375rem; /* 15px */
+    --text-body-small-xl: 1rem;      /* 16px */
+    --text-body-small-3xl: 1.125rem; /* 18px */
+    --text-body-small-4xl: 1.25rem;  /* 20px */
+    --text-body-small-5xl: 1.375rem; /* 22px */
+    /* Small Text - For captions, notes, etc. */
+    --text-small-xs: 0.75rem;    /* 12px */
+    --text-small-md: 0.8125rem;  /* 13px */
+    --text-small-lg: 0.875rem;   /* 14px */
+    --text-small-xl: 0.9375rem;  /* 15px */
+    --text-small-3xl: 1rem;      /* 16px */
+    --text-small-4xl: 1.125rem;  /* 18px */
+    --text-small-5xl: 1.25rem;   /* 20px */
+    /* Footer Text */
+    --text-footer-xs: 0.75rem;   /* 12px */
+    --text-footer-md: 0.8125rem; /* 13px */
+    --text-footer-lg: 0.875rem;  /* 14px */
+    --text-footer-xl: 0.875rem;  /* 14px */
+    --text-footer-3xl: 0.9375rem;/* 15px */
+    --text-footer-4xl: 1rem;     /* 16px */
+    --text-footer-5xl: 1.125rem; /* 18px */
+}

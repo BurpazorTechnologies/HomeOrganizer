@@ -15,7 +15,7 @@
             <p class="text-sm uppercase tracking-[0.2em] text-emerald-400 mb-2">Utility Suite</p>
             <h1 class="text-3xl sm:text-4xl font-semibold text-white">Developer Tools Dashboard</h1>
             <p class="mt-3 text-slate-400 max-w-3xl">
-                Quick links to diagnostics, UI previews, and code playgrounds. Sections are grouped by the feature area they target.
+                Quick links to diagnostics, UI previews, and chat playgrounds. Sections are grouped by the feature area they target.
             </p>
         </header>
 
