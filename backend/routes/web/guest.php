@@ -12,7 +12,7 @@ use App\Http\Controllers\Client\Auth\PasswordResetLinkController as ClientPasswo
 use App\Http\Controllers\Admin\Auth\AuthenticatedSessionController as AdminAuthenticatedSessionController;
 use App\Http\Controllers\Client\Auth\AuthenticatedSessionController as ClientAuthenticatedSessionController;
 
-Route::prefix('client')->group(function () {
+Route::group([], function () {
     Route::get('login', [ClientAuthenticatedSessionController::class, 'create'])
     ->name('client.login');
 

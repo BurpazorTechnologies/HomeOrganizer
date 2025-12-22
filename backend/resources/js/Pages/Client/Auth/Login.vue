@@ -220,30 +220,6 @@ const goToRegister = (): void => {
                     class="text-primary-content py-2 px-6 rounded-xl border-primary border-1">
                     Continue With Google
                 </PrimaryButton>
-                <PrimaryButton type="button" class="text-primary-content py-2 px-6 rounded-xl border-primary border-1">
-                    Continue With Facebook
-                </PrimaryButton>
-                <PrimaryButton type="button" class="text-primary-content py-2 px-6 rounded-xl border-primary border-1">
-                    Continue With Apple
-                </PrimaryButton>
-                <PrimaryButton type="button" class="text-primary-content py-2 px-6 rounded-xl border-primary border-1">
-                    Continue With Github
-                </PrimaryButton>
-                <PrimaryButton type="button" class="text-primary-content py-2 px-6 rounded-xl border-primary border-1">
-                    Continue With Microsoft
-                </PrimaryButton>
-                <PrimaryButton type="button" class="text-primary-content py-2 px-6 rounded-xl border-primary border-1">
-                    Continue With Reddit
-                </PrimaryButton>
-                <PrimaryButton type="button" class="text-primary-content py-2 px-6 rounded-xl border-primary border-1">
-                    Continue With X
-                </PrimaryButton>
-                <PrimaryButton type="button" class="text-primary-content py-2 px-6 rounded-xl border-primary border-1">
-                    Continue With LinkedIn
-                </PrimaryButton>
-                <PrimaryButton type="button" class="text-primary-content py-2 px-6 rounded-xl border-primary border-1">
-                    Continue With TikTok
-                </PrimaryButton>
             </div>
         </form>
     </ClientGuestLayout>

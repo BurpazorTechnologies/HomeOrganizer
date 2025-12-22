@@ -9,9 +9,6 @@
     <!-- Social Meta Tags -->
     @include('partials.social-meta-tags')
 
-    <!-- Google Analytics -->
-    @include('partials.google-analytics')
-
     <!-- reCAPTCHA -->
     @include('partials.recaptcha')
 

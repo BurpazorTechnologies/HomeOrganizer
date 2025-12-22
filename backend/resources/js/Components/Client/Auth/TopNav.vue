@@ -4,7 +4,7 @@
         <div class="flex justify-between items-center w-full">
             <!-- Logo -->
             <a href="/" rel="noopener noreferrer">
-                <img src="/assets/img/_shared/homeorganizer-tech-logo-white.svg" alt="Logo" class="w-full max-w-[10.938rem]" />
+                <img src="/assets/img/_shared/burpazor-tech-logo-white.svg" alt="Logo" class="w-full max-w-[10.938rem]" />
             </a>
         </div>
     </div>
