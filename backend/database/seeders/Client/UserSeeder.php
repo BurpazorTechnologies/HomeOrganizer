@@ -12,14 +12,14 @@ class UserSeeder extends Seeder
         if (app()->environment('local')) {
             $userList = [
                 [
-                    'first_name' => 'John',
-                    'last_name' => 'Doe',
-                    'email' => 'user1@gmail.com',
+                    'first_name' => 'Winzor',
+                    'last_name' => 'Paelmo',
+                    'email' => 'winzorjmpaelmo@gmail.com',
                 ],
                 [
-                    'first_name' => 'Jane',
-                    'last_name' => 'Doe',
-                    'email' => 'user2@gmail.com',
+                    'first_name' => 'Angelica',
+                    'last_name' => 'Barcebal',
+                    'email' => 'angelicambarcebal@gmail.com',
                 ]
             ];
 

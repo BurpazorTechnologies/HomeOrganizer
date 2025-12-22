@@ -18,10 +18,6 @@ const props = defineProps({
         type: Object,
         default: () => ({}),
     },
-    adminOauthAttempt: {
-        type: Boolean,
-        default: false,
-    },
 });
 
 const form = useForm({
@@ -33,59 +29,35 @@ const form = useForm({
 // Check for `admin account` login errors using Inertia's error handling
 type InertiaErrorBag = Record<string, string | string[]> | undefined;
 
-const checkForAdminError = (errors?: InertiaErrorBag): void => {
-    console.log('Checking for admin error:', errors);
+// Check for authentication failure errors (credentials mismatch)
+const checkForAuthError = (errors?: InertiaErrorBag): void => {
+    console.log('Checking for auth error:', errors);
     if (errors && errors.email) {
         const emailError = Array.isArray(errors.email) ? errors.email[0] : errors.email;
         console.log('Email error message:', emailError);
         
         if (emailError && (
-            emailError.includes('admin user') || 
-            emailError.includes('admin login portal') ||
-            emailError.includes('registered as an admin')
+            emailError.includes('credentials do not match') ||
+            emailError.includes('These credentials do not match our records')
         )) {
-            console.log('Admin error detected, showing SweetAlert');
-            showAdminErrorAlert();
+            console.log('Auth error detected, showing SweetAlert');
+            showAuthErrorAlert();
         }
     }
 };
 
-// Show SweetAlert for `admin account` login error
-const showAdminErrorAlert = () => {
+// Show SweetAlert for authentication failure error
+const showAuthErrorAlert = () => {
     Swal.fire({
-        title: 'Access Denied',
-        text: 'This email is registered as an admin user. Please use the admin login portal instead.',
-        icon: 'warning',
-        confirmButtonText: 'Go to Admin Login',
-        showCancelButton: true,
-        cancelButtonText: 'Cancel',
+        title: 'Login Failed',
+        text: 'These credentials do not match our records.',
+        icon: 'error',
+        confirmButtonText: 'OK',
         theme: 'dark',
         customClass: {
-            popup: 'swal-admin-login-error-popup'
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            window.location.href = route('admin.login');
+            popup: 'swal-auth-error-popup'
         }
     });
-};
-
-// Check if email is `admin account` via API
-const checkEmailRole = async (email: string): Promise<void> => {
-    if (!email || !email.includes('@')) return;
-    
-    try {
-        const response = await axios.post('/api/check-email-role', {
-            email: email
-        });
-        
-        if (response.data.is_admin) {
-            console.log('Admin email detected via API:', email);
-            showAdminErrorAlert();
-        }
-    } catch (error) {
-        console.error('Error checking email role:', error);
-    }
 };
 
 onMounted(async () => {
@@ -98,30 +70,14 @@ onMounted(async () => {
     
     // Check for existing errors on page load
     console.log('Props errors on mount:', props.errors);
-    checkForAdminError(props.errors);
+    checkForAuthError(props.errors);
 });
 
 // Watch for changes in props.errors (Inertia validation errors)
-watch(() => props.errors, (newErrors) => {
+watch(() => props.errors, (newErrors: InertiaErrorBag) => {
     console.log('Props errors changed:', newErrors);
-    checkForAdminError(newErrors);
+    checkForAuthError(newErrors);
 }, { deep: true, immediate: true });
-
-// Handle email input blur event to check if it's an admin
-const handleEmailBlur = () => {
-    if (form.email) {
-        console.log('Email input blurred, checking role:', form.email);
-        checkEmailRole(form.email);
-    }
-};
-
-// Watch for admin OAuth attempt flag
-watch(() => props.adminOauthAttempt, (isAdminOauthAttempt) => {
-    if (isAdminOauthAttempt) {
-        console.log('Admin OAuth attempt detected, showing SweetAlert');
-        showAdminErrorAlert();
-    }
-}, { immediate: true });
 
 const submit = async (): Promise<void> => {
     console.log('Form submitting with data:', form.data());
@@ -133,7 +89,7 @@ const submit = async (): Promise<void> => {
         onSuccess: () => {
             console.log('Login successful');
         },
-        onError: (errors) => {
+        onError: (errors: InertiaErrorBag) => {
             console.log('Login error:', errors);
             console.log('Form errors:', form.errors);
         }
@@ -146,6 +102,15 @@ const handleGoogleLogin = (): void => {
 
 const goToRegister = (): void => {
     router.visit(route('client.register'));
+};
+
+// Helper function to convert error to string (handles arrays)
+const getErrorMessage = (error: string | string[] | undefined): string => {
+    if (!error) return '';
+    if (Array.isArray(error)) {
+        return error[0] || '';
+    }
+    return error;
 };
 </script>
 
@@ -166,13 +131,12 @@ const goToRegister = (): void => {
                     type="email"
                     class="mt-1 block w-full border-solid border-1 border-primary"
                     v-model="form.email"
-                    @blur="handleEmailBlur"
                     required
                     autofocus
                     autocomplete="username"
                 />
 
-                <InputError class="" :message="errors.email || form.errors.email"/>
+                <InputError class="text-red-500" :message="getErrorMessage(errors.email || form.errors.email)"/>
             </div>
 
             <div class="mt-4">
@@ -186,7 +150,7 @@ const goToRegister = (): void => {
                     autocomplete="current-password"
                 />
 
-                <InputError class="" :message="errors.password || form.errors.password"/>
+                <InputError class=" " :message="getErrorMessage(errors.password || form.errors.password)"/>
             </div>
 
            <div class="flex">

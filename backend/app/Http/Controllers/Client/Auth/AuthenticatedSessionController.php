@@ -20,7 +20,6 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('Client/Auth/Login', [
             'canResetPassword' => Route::has('client.password.request'),
             'status' => session('status'),
-            'adminOauthAttempt' => session('admin_oauth_attempt', false),
         ]);
     }
 
@@ -59,7 +58,6 @@ class AuthenticatedSessionController extends Controller
             return Inertia::render('Client/Auth/Login', [
                 'status' => session('status'),
                 'errors' => $e->errors(),
-                'adminOauthAttempt' => session('admin_oauth_attempt', false),
             ]);
         }
     }

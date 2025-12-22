@@ -23,8 +23,6 @@ class RedirectIfAuthenticated
     protected function redirectToDashboard(string $guard): Response
     {
         switch ($guard) {
-            case 'admin':
-                return redirect()->route('admin.dashboard');
             case 'client':
                 return redirect()->route('client.dashboard');
             default:

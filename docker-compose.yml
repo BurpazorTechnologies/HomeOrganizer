@@ -54,15 +54,9 @@ services:
       - './_docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro'
       - './_docker/nginx/conf/:/etc/nginx/conf.d:ro'
       - './_docker/nginx/server/server.conf:/etc/nginx/sites-available/default:ro'
+      - './_docker/nginx/start-container.sh:/start-container.sh:ro'
       - 'homeorganizer-nginx-ssl:/etc/nginx/ssl:ro'
-    command: >
-      bash -lc '
-        while [ ! -f /etc/nginx/ssl/nginx-selfsigned.key ] || [ ! -f /etc/nginx/ssl/nginx-selfsigned.crt ]; do
-          echo "Waiting for SSL certs in /etc/nginx/ssl ..." ;
-          sleep 1 ;
-        done ;
-        exec /usr/sbin/nginx -g "daemon off;"
-      '
+    command: bash /start-container.sh
     depends_on:
       - backend
 
@@ -81,23 +75,10 @@ services:
       - '5173:5173'
     volumes:
       - './backend:/var/www/html'
-      - 'homeorganizer-node-modules:/var/www/html/node_modules'
+      - './_docker/node/start-container.sh:/start-container.sh:ro'
       - 'homeorganizer-nginx-ssl:/etc/nginx/ssl:ro'
       - 'homeorganizer-yarn-cache:/usr/local/share/.cache/yarn'
-    command: >
-      sh -lc '
-        corepack enable &&
-        corepack prepare yarn@1.22.22 --activate &&
-        while [ ! -f /etc/nginx/ssl/nginx-selfsigned.key ] || [ ! -f /etc/nginx/ssl/nginx-selfsigned.crt ]; do
-          echo "Waiting for SSL certs in /etc/nginx/ssl ..." ;
-          sleep 1 ;
-        done &&
-        yarn config set registry "https://registry.npmjs.org/" &&
-        yarn config set network-timeout 600000 -g &&
-        yarn config set network-concurrency 1 -g &&
-        yarn install -v --no-lockfile --network-timeout 600000 &&
-        yarn dev
-      '
+    command: sh /start-container.sh
     depends_on:
       - backend
 
@@ -192,7 +173,6 @@ volumes:
   homeorganizer-redis:
   homeorganizer-redis-insight-data: { }
   homeorganizer-nginx-ssl:
-  homeorganizer-node-modules:
   homeorganizer-yarn-cache:
 
 networks:
