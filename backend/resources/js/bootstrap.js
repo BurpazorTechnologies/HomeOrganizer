@@ -12,10 +12,3 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 import './echo';
 
-/**
- * Tracking
- */
-import trackingConfig from '@/Config/tracking.config';
-import { startTracking } from '@/Lib/tracking';
-
-startTracking(trackingConfig);

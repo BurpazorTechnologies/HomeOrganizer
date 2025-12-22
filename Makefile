@@ -9,6 +9,9 @@ include makefiles/local/development.mk
 svc-connect-backend:
 	@docker compose exec backend bash
 
+svc-connect-node:
+	@docker compose exec node bash
+
 svc-connect-proxy:
 	@echo "🐚 Entering proxy service bash shell..."
 	docker compose exec proxy-server bash
