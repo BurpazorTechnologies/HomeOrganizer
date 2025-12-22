@@ -37,7 +37,6 @@ class User extends Authenticatable implements MustVerifyEmail
     protected static function booted()
     {
         static::created(function (self $user) {
-            $user->assignRole(config('user.defaults.client.role'));
             $user->createToken('default');
             $user->save();
         });
@@ -46,11 +45,6 @@ class User extends Authenticatable implements MustVerifyEmail
     public function userInformation(): HasOne
     {
         return $this->hasOne(UserInformation::class, 'user_id', 'id');
-    }
-
-    public function isClient(): bool
-    {
-        return $this->hasRole(self::CLIENT_ROLE_NAME);
     }
 
     protected function casts(): array

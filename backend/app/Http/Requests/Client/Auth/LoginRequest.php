@@ -32,7 +32,7 @@ class LoginRequest extends FormRequest
 
         Auth::shouldUse('client');
 
-        if (!$this->attemptAuthentication() || !$this->isAuthenticatedClient()) {
+        if (!$this->attemptAuthentication()) {
             $this->handleAuthenticationFailure();
         }
 
@@ -45,11 +45,6 @@ class LoginRequest extends FormRequest
             $this->only('email', 'password'),
             $this->boolean('remember')
         );
-    }
-
-    private function isAuthenticatedClient(): bool
-    {
-        return Auth::check() && Auth::user()->isClient();
     }
 
     private function handleAuthenticationFailure(): void

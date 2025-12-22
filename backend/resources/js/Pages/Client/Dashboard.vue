@@ -12,7 +12,7 @@ import AuthenticatedLayout from '@/Layouts/Client/AuthenticatedLayout.vue';
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                insert template here
+                Add Grid Layout here
             </div>
         </div>
     </AuthenticatedLayout>

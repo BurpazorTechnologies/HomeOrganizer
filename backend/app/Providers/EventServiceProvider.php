@@ -2,8 +2,6 @@
 
 namespace App\Providers;
 
-use App\Events\Tracking\EventTracked;
-use App\Listeners\Tracking\QueueEventRecording;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -18,9 +16,6 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         Registered::class => [
             SendEmailVerificationNotification::class,
-        ],
-        EventTracked::class => [
-            QueueEventRecording::class,
         ],
     ];
 

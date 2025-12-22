@@ -13,17 +13,8 @@ const showingNavigationDropdown = ref(false);
 
 <template>
     <div class="h-screen flex bg-neutral text-neutral-content">
-        <!-- Sidebar -->
-        <Sidebar
-            :userName="$page.props.auth.user.user_information.first_name"
-            :links="[
-                { text: 'Dashboard', href: '/admin/dashboard', icon: 'fa-solid fa-table-columns', active: true },
-            ]"
-            class="fixed h-full w-[15%]"
-        />
-
         <!-- Main Content Area -->
-        <div class="ml-[15%] w-[85%] overflow-y-auto">
+        <div class="w-full overflow-y-auto">
             <!-- Navigation -->
             <nav class="bg-neutral border-b border-primary-dark">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -31,7 +22,7 @@ const showingNavigationDropdown = ref(false);
                         <div class="flex">
                             <!-- Logo -->
                             <div class="shrink-0 flex items-center">
-                                <Link :href="route('admin.dashboard')">
+                                <Link :href="route('client.dashboard')">
                                     <ApplicationLogo
                                         class="block h-9 w-auto fill-current text-gray-800"
                                     />
@@ -69,7 +60,7 @@ const showingNavigationDropdown = ref(false);
                                     </template>
 
                                     <template #content>
-                                        <DropdownLink :href="route('admin.logout')" method="post" as="button">
+                                        <DropdownLink :href="route('client.logout')" method="post" as="button">
                                             Log Out
                                         </DropdownLink>
                                     </template>

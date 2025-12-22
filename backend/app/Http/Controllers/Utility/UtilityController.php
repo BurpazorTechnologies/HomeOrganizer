@@ -58,18 +58,6 @@ class UtilityController extends Controller
                         'method' => 'GET',
                         'url' => route('utility.email.test'),
                     ],
-                    [
-                        'label' => 'Preview Admin Forward Mail',
-                        'description' => 'Renders the forward-mail template (append ?sendEmail=1 to actually send).',
-                        'method' => 'GET',
-                        'url' => route('utility.email.preview.admin', ['emailView' => 'forward-mail']),
-                    ],
-                    [
-                        'label' => 'Preview Admin Automated Reply',
-                        'description' => 'Renders the automated-reply template with sample data.',
-                        'method' => 'GET',
-                        'url' => route('utility.email.preview.admin', ['emailView' => 'automated-reply']),
-                    ],
                 ],
             ],
             [
@@ -93,78 +81,6 @@ class UtilityController extends Controller
                         'description' => 'Renders the typography component theme demo.',
                         'method' => 'GET',
                         'url' => route('utility.ui.theme', ['component' => 'typography']),
-                    ],
-                ],
-            ],
-            [
-                'title' => 'Admin Helpers',
-                'description' => 'Endpoints intended for authenticated admin operators.',
-                'links' => [
-                    [
-                        'label' => 'Fetch Admin API Token',
-                        'description' => 'Returns a Sanctum token for the current admin session.',
-                        'method' => 'GET',
-                        'url' => route('utility.admin.api-token'),
-                    ],
-                    [
-                        'label' => 'Roles & Permissions Snapshot',
-                        'description' => 'Inertia UI listing current Spatie roles and permissions grouped per guard.',
-                        'method' => 'GET',
-                        'url' => route('utility.admin.rbac.roles-permissions'),
-                    ],
-                    [
-                        'label' => 'JWT RBAC Testing',
-                        'description' => 'JWT-based role and permission testing with token display and decryption.',
-                        'method' => 'GET',
-                        'url' => route('utility.admin.rbac.jwt.roles-permissions'),
-                    ],
-                ],
-            ],
-            [
-                'title' => 'Chat Tools',
-                'description' => 'Debug endpoints for the real-time chat experience.',
-                'links' => [
-                    [
-                        'label' => 'Chat as Guest',
-                        'description' => 'Loads the guest chat UI.',
-                        'method' => 'GET',
-                        'url' => route('utility.chat.guest'),
-                    ],
-                    [
-                        'label' => 'Chat as Client',
-                        'description' => 'Loads the client chat UI.',
-                        'method' => 'GET',
-                        'url' => route('utility.chat.client'),
-                    ],
-                    [
-                        'label' => 'Chat as Admin',
-                        'description' => 'Loads the admin chat dashboard.',
-                        'method' => 'GET',
-                        'url' => route('utility.chat.admin'),
-                    ],
-                    [
-                        'label' => 'Dispatch Test Notification',
-                        'description' => 'Triggers a fake chat notification.',
-                        'method' => 'GET',
-                        'url' => route('utility.chat.test.notification'),
-                    ],
-                    [
-                        'label' => 'Send Chat Message',
-                        'description' => 'POST utility endpoint used by the UI to send messages.',
-                        'method' => 'POST',
-                        'url' => route('utility.chat.send'),
-                    ],
-                ],
-            ],
-            [
-                'title' => 'Tracking Tools',
-                'description' => 'Inspect the event pipeline and front-end instrumentation state.',
-                'links' => [
-                    [
-                        'label' => 'Tracking Preview',
-                        'description' => 'Loads the tracking debugger with sample sessions and events.',
-                        'method' => 'GET',
-                        'url' => route('utility.tracking.preview'),
                     ],
                 ],
             ],

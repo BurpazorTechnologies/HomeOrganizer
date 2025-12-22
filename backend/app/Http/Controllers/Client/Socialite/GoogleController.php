@@ -2,24 +2,18 @@
 
 namespace App\Http\Controllers\Client\Socialite;
 
-use Illuminate\Support\Facades\Log;
-use Throwable;
-use Inertia\Inertia;
+use Throwable; 
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Laravel\Socialite\Facades\Socialite;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\RedirectResponse;  
+use Laravel\Socialite\Facades\Socialite;        
 use Laravel\Socialite\Two\InvalidStateException;
 use App\Models\Client\User;
-use App\Models\UserInformation;
 use App\Http\Controllers\Controller;
-use App\Services\UserRoleService;
 
 class GoogleController extends Controller
 {
-    public function __construct(private readonly UserRoleService $userRoleService)
-    {
-    }
     public function redirect(): RedirectResponse
     {
         try {
@@ -59,20 +53,6 @@ class GoogleController extends Controller
     {
         try {
             $googleUser = Socialite::driver('google')->user();
-
-            // Check if this is an admin trying to login via Google OAuth
-            $email = $googleUser->getEmail();
-            if ($email && $this->userRoleService->isEmailRegisteredAsAdmin($email)) {
-                Log::warning('Admin attempted Google OAuth login', [
-                    'email' => $email
-                ]);
-                
-                return redirect()->route('client.login')
-                    ->withErrors([
-                        'email' => 'This email is registered as an admin user. Please use the admin login portal instead.'
-                    ])
-                    ->with('admin_oauth_attempt', true);
-            }
 
             $user = $this->firstOrCreateFromGoogle($googleUser);
 

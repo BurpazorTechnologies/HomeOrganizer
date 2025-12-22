@@ -24,13 +24,8 @@ Route::middleware(['client.auth'])->group(function () {
         ->name('client.logout');
 
     Route::middleware(['client.verified'])->group(function () {
-        Route::get('coming-soon', [ComingSoonController::class, 'show'])
-            ->name('client.coming-soon');
-
-        Route::middleware(['client.coming-soon'])->group(function () {
-            Route::get('dashboard', [DashboardController::class, 'show'])
-                ->name('client.dashboard');
-        });
+        Route::get('dashboard', [DashboardController::class, 'show'])
+            ->name('client.dashboard');
     });
 });
 

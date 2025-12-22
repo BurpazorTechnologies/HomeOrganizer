@@ -20,20 +20,6 @@ const availableRoles: RoleOption[] = [
 ];
 
 const availablePermissions: PermissionOption[] = [
-    // Admin permissions
-    { name: 'admin.dashboard.access', guard: 'admin' },
-    { name: 'admin.chat.view', guard: 'admin' },
-    { name: 'admin.chat.respond', guard: 'admin' },
-    { name: 'admin.chat.audit', guard: 'admin' },
-    { name: 'admin.chat.manage', guard: 'admin' },
-    { name: 'admin.tracking.dashboard.view', guard: 'admin' },
-    { name: 'admin.tracking.report.export', guard: 'admin' },
-    { name: 'admin.tracking.configure', guard: 'admin' },
-    { name: 'admin.portfolio.manage', guard: 'admin' },
-    { name: 'admin.resume.review', guard: 'admin' },
-    { name: 'admin.resume.approve', guard: 'admin' },
-    { name: 'admin.users.manage', guard: 'admin' },
-    { name: 'admin.utility.access', guard: 'admin' },
     // Client permissions
     { name: 'client.dashboard.access', guard: 'client' },
     { name: 'client.profile.view', guard: 'client' },

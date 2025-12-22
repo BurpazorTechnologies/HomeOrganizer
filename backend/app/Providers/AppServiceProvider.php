@@ -25,18 +25,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        LogViewer::auth(function ($request) {
-            return $request->user()->isAdmin();
-        });
-
-        Gate::before(function ($user, string $ability) {
-            if (method_exists($user, 'hasRole') && $user->hasRole('superadmin')) {
-                return true;
-            }
-
-            return null;
-        });
-
         Gate::define('viewPulse', function (User $user) {
             return $user->isAdmin();
         });

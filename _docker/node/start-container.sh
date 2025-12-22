@@ -19,7 +19,7 @@ yarn config set network-timeout 600000 -g
 yarn config set network-concurrency 1 -g
 
 echo "Running yarn install..."
-yarn install --no-lockfile --network-timeout 600000
+yarn install --verbose --no-lockfile --network-timeout 600000
 
 echo "Yarn install completed. Checking for node_modules..."
 if [ ! -d "node_modules" ]; then

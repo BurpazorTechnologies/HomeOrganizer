@@ -22,20 +22,6 @@ type RoleProbe = {
 
 const permissionProbes: PermissionProbe[] = [
     {
-        id: 'admin-chat-manage',
-        title: 'Admin · Chat Manage',
-        permission: 'admin.chat.manage',
-        guard: 'admin',
-        description: 'Full control over live chat moderation, matching config/rbac.php.',
-    },
-    {
-        id: 'admin-dashboard-access',
-        title: 'Admin · Dashboard Access',
-        permission: 'admin.dashboard.access',
-        guard: 'admin',
-        description: 'Entry point to the admin overview dashboard.',
-    },
-    {
         id: 'client-dashboard-access',
         title: 'Client · Dashboard Access',
         permission: 'client.dashboard.access',
@@ -52,20 +38,6 @@ const permissionProbes: PermissionProbe[] = [
 ];
 
 const roleProbes: RoleProbe[] = [
-    {
-        id: 'superadmin-role',
-        title: 'Super Administrator',
-        role: 'superadmin',
-        guard: 'admin',
-        description: 'Unrestricted role defined in config/rbac.php.',
-    },
-    {
-        id: 'admin-role',
-        title: 'Administrator',
-        role: 'admin',
-        guard: 'admin',
-        description: 'Standard admin role with platform-wide access.',
-    },
     {
         id: 'client-role',
         title: 'Client',

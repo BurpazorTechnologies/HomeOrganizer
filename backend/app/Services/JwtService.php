@@ -2,21 +2,21 @@
 
 namespace App\Services;
 
-use App\Models\Jwt\JwtLongToken;
-use App\Models\Jwt\JwtShortToken;
-use App\Models\Jwt\JwtTokenBlacklist;
+use InvalidArgumentException;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Contracts\Support\Arrayable;
-use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use InvalidArgumentException;
+use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Model as EloquentModel;
+use App\Models\Jwt\JwtLongToken;
+use App\Models\Jwt\JwtShortToken;
+use App\Models\Jwt\JwtTokenBlacklist;
 
 class JwtService
 {
