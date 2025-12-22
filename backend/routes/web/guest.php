@@ -9,12 +9,11 @@ use App\Http\Controllers\Guest\Auth\NewPasswordController as GuestNewPasswordCon
 use App\Http\Controllers\Client\Auth\NewPasswordController as ClientNewPasswordController;
 use App\Http\Controllers\Guest\Auth\PasswordResetLinkController as GuestPasswordResetLinkController;
 use App\Http\Controllers\Client\Auth\PasswordResetLinkController as ClientPasswordResetLinkController;
-use App\Http\Controllers\Admin\Auth\AuthenticatedSessionController as AdminAuthenticatedSessionController;
 use App\Http\Controllers\Client\Auth\AuthenticatedSessionController as ClientAuthenticatedSessionController;
 
 Route::group([], function () {
     Route::get('login', [ClientAuthenticatedSessionController::class, 'create'])
-    ->name('client.login');
+        ->name('client.login');
 
     Route::post('login', [ClientAuthenticatedSessionController::class, 'store'])
         ->name('client.login.store');
@@ -53,5 +52,5 @@ Route::get('changed-password', [GuestNewPasswordController::class, 'changedPassw
     ->name('client.password.changed');
 
 Route::get('blog', [BlogController::class, 'index'])
-->name('guest.blog');
+    ->name('guest.blog');
 

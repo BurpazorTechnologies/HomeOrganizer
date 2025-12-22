@@ -21,9 +21,13 @@ LoginResponseDto _$LoginResponseDtoFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$LoginResponseDto {
-  String get message => throw _privateConstructorUsedError;
-  LoginUserDto get user => throw _privateConstructorUsedError;
   String get token => throw _privateConstructorUsedError;
+  @JsonKey(name: 'expires_at')
+  DateTime get expiresAt => throw _privateConstructorUsedError;
+  String get service => throw _privateConstructorUsedError;
+  String get type => throw _privateConstructorUsedError;
+  String get context => throw _privateConstructorUsedError;
+  String get guard => throw _privateConstructorUsedError;
 
   /// Serializes this LoginResponseDto to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -42,9 +46,14 @@ abstract class $LoginResponseDtoCopyWith<$Res> {
     $Res Function(LoginResponseDto) then,
   ) = _$LoginResponseDtoCopyWithImpl<$Res, LoginResponseDto>;
   @useResult
-  $Res call({String message, LoginUserDto user, String token});
-
-  $LoginUserDtoCopyWith<$Res> get user;
+  $Res call({
+    String token,
+    @JsonKey(name: 'expires_at') DateTime expiresAt,
+    String service,
+    String type,
+    String context,
+    String guard,
+  });
 }
 
 /// @nodoc
@@ -62,37 +71,42 @@ class _$LoginResponseDtoCopyWithImpl<$Res, $Val extends LoginResponseDto>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? message = null,
-    Object? user = null,
     Object? token = null,
+    Object? expiresAt = null,
+    Object? service = null,
+    Object? type = null,
+    Object? context = null,
+    Object? guard = null,
   }) {
     return _then(
       _value.copyWith(
-            message: null == message
-                ? _value.message
-                : message // ignore: cast_nullable_to_non_nullable
-                      as String,
-            user: null == user
-                ? _value.user
-                : user // ignore: cast_nullable_to_non_nullable
-                      as LoginUserDto,
             token: null == token
                 ? _value.token
                 : token // ignore: cast_nullable_to_non_nullable
                       as String,
+            expiresAt: null == expiresAt
+                ? _value.expiresAt
+                : expiresAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime,
+            service: null == service
+                ? _value.service
+                : service // ignore: cast_nullable_to_non_nullable
+                      as String,
+            type: null == type
+                ? _value.type
+                : type // ignore: cast_nullable_to_non_nullable
+                      as String,
+            context: null == context
+                ? _value.context
+                : context // ignore: cast_nullable_to_non_nullable
+                      as String,
+            guard: null == guard
+                ? _value.guard
+                : guard // ignore: cast_nullable_to_non_nullable
+                      as String,
           )
           as $Val,
     );
-  }
-
-  /// Create a copy of LoginResponseDto
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $LoginUserDtoCopyWith<$Res> get user {
-    return $LoginUserDtoCopyWith<$Res>(_value.user, (value) {
-      return _then(_value.copyWith(user: value) as $Val);
-    });
   }
 }
 
@@ -105,10 +119,14 @@ abstract class _$$LoginResponseDtoImplCopyWith<$Res>
   ) = __$$LoginResponseDtoImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String message, LoginUserDto user, String token});
-
-  @override
-  $LoginUserDtoCopyWith<$Res> get user;
+  $Res call({
+    String token,
+    @JsonKey(name: 'expires_at') DateTime expiresAt,
+    String service,
+    String type,
+    String context,
+    String guard,
+  });
 }
 
 /// @nodoc
@@ -125,23 +143,38 @@ class __$$LoginResponseDtoImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? message = null,
-    Object? user = null,
     Object? token = null,
+    Object? expiresAt = null,
+    Object? service = null,
+    Object? type = null,
+    Object? context = null,
+    Object? guard = null,
   }) {
     return _then(
       _$LoginResponseDtoImpl(
-        message: null == message
-            ? _value.message
-            : message // ignore: cast_nullable_to_non_nullable
-                  as String,
-        user: null == user
-            ? _value.user
-            : user // ignore: cast_nullable_to_non_nullable
-                  as LoginUserDto,
         token: null == token
             ? _value.token
             : token // ignore: cast_nullable_to_non_nullable
+                  as String,
+        expiresAt: null == expiresAt
+            ? _value.expiresAt
+            : expiresAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime,
+        service: null == service
+            ? _value.service
+            : service // ignore: cast_nullable_to_non_nullable
+                  as String,
+        type: null == type
+            ? _value.type
+            : type // ignore: cast_nullable_to_non_nullable
+                  as String,
+        context: null == context
+            ? _value.context
+            : context // ignore: cast_nullable_to_non_nullable
+                  as String,
+        guard: null == guard
+            ? _value.guard
+            : guard // ignore: cast_nullable_to_non_nullable
                   as String,
       ),
     );
@@ -152,24 +185,34 @@ class __$$LoginResponseDtoImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$LoginResponseDtoImpl implements _LoginResponseDto {
   const _$LoginResponseDtoImpl({
-    required this.message,
-    required this.user,
     required this.token,
+    @JsonKey(name: 'expires_at') required this.expiresAt,
+    required this.service,
+    required this.type,
+    required this.context,
+    required this.guard,
   });
 
   factory _$LoginResponseDtoImpl.fromJson(Map<String, dynamic> json) =>
       _$$LoginResponseDtoImplFromJson(json);
 
   @override
-  final String message;
-  @override
-  final LoginUserDto user;
-  @override
   final String token;
+  @override
+  @JsonKey(name: 'expires_at')
+  final DateTime expiresAt;
+  @override
+  final String service;
+  @override
+  final String type;
+  @override
+  final String context;
+  @override
+  final String guard;
 
   @override
   String toString() {
-    return 'LoginResponseDto(message: $message, user: $user, token: $token)';
+    return 'LoginResponseDto(token: $token, expiresAt: $expiresAt, service: $service, type: $type, context: $context, guard: $guard)';
   }
 
   @override
@@ -177,14 +220,19 @@ class _$LoginResponseDtoImpl implements _LoginResponseDto {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$LoginResponseDtoImpl &&
-            (identical(other.message, message) || other.message == message) &&
-            (identical(other.user, user) || other.user == user) &&
-            (identical(other.token, token) || other.token == token));
+            (identical(other.token, token) || other.token == token) &&
+            (identical(other.expiresAt, expiresAt) ||
+                other.expiresAt == expiresAt) &&
+            (identical(other.service, service) || other.service == service) &&
+            (identical(other.type, type) || other.type == type) &&
+            (identical(other.context, context) || other.context == context) &&
+            (identical(other.guard, guard) || other.guard == guard));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, message, user, token);
+  int get hashCode =>
+      Object.hash(runtimeType, token, expiresAt, service, type, context, guard);
 
   /// Create a copy of LoginResponseDto
   /// with the given fields replaced by the non-null parameter values.
@@ -205,20 +253,30 @@ class _$LoginResponseDtoImpl implements _LoginResponseDto {
 
 abstract class _LoginResponseDto implements LoginResponseDto {
   const factory _LoginResponseDto({
-    required final String message,
-    required final LoginUserDto user,
     required final String token,
+    @JsonKey(name: 'expires_at') required final DateTime expiresAt,
+    required final String service,
+    required final String type,
+    required final String context,
+    required final String guard,
   }) = _$LoginResponseDtoImpl;
 
   factory _LoginResponseDto.fromJson(Map<String, dynamic> json) =
       _$LoginResponseDtoImpl.fromJson;
 
   @override
-  String get message;
-  @override
-  LoginUserDto get user;
-  @override
   String get token;
+  @override
+  @JsonKey(name: 'expires_at')
+  DateTime get expiresAt;
+  @override
+  String get service;
+  @override
+  String get type;
+  @override
+  String get context;
+  @override
+  String get guard;
 
   /// Create a copy of LoginResponseDto
   /// with the given fields replaced by the non-null parameter values.

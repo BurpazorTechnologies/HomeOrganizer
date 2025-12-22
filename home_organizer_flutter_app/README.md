@@ -12,6 +12,9 @@ r
 
 // Hot restart (recompiles)
 R
+
+// rebuild generated files
+dart run build_runner build --delete-conflicting-outputs
 ```
 
 ## Environments (local / dev / prod)
