@@ -16,7 +16,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
-use App\Events\TestEvent;
+use App\Events\Utility\Reverb\TestEvent;
 use App\Http\Controllers\Controller;
 
 class UtilityController extends Controller
@@ -130,14 +130,16 @@ class UtilityController extends Controller
     public function reverb(): JsonResponse
     {
         $testMessage = 'Reverb is working!';
+        $title = 'Test Notification';
 
-        broadcast(new TestEvent($testMessage));
+        broadcast(new TestEvent($testMessage, $title));
 
         return response()->json([
-            'message' => 'Event broadcasted!',
+            'message' => 'Event queued for broadcast!',
             'data' => [
-                'test-message' => $testMessage
-            ]
+                'title' => $title,
+                'message' => $testMessage,
+            ],
         ]);
     }
 
@@ -167,6 +169,11 @@ class UtilityController extends Controller
     public function showPreview(): InertiaResponse
     {
         return Inertia::render('Utility/Preview', []);
+    }
+
+    public function showWebsocketsIndex(): InertiaResponse
+    {
+        return Inertia::render('Utility/Websockets/Index');
     }
 
     public function showThemeComponent(string $component): InertiaResponse

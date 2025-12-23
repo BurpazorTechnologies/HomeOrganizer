@@ -2,7 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Client\Socialite\GoogleController;
 use App\Http\Controllers\Client\Auth\RegisterController as ClientRegisterController;
 use App\Http\Controllers\Guest\Auth\NewPasswordController as GuestNewPasswordController;
@@ -50,7 +49,3 @@ Route::post('reset-password', [GuestNewPasswordController::class, 'store'])
 
 Route::get('changed-password', [GuestNewPasswordController::class, 'changedPassword'])
     ->name('client.password.changed');
-
-Route::get('blog', [BlogController::class, 'index'])
-    ->name('guest.blog');
-

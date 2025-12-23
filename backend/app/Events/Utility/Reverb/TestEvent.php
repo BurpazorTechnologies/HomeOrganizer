@@ -11,17 +11,15 @@ class TestEvent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $message;
-
     /**
      * Create a new event instance.
      *
      * @return void
      */
-    public function __construct($message)
-    {
-        $this->message = $message;
-    }
+    public function __construct(
+        public string $message,
+        public ?string $title = null,
+    ) {}
 
     /**
      * Get the channels the event should broadcast on.
@@ -30,11 +28,19 @@ class TestEvent implements ShouldBroadcast
      */
     public function broadcastOn()
     {
-        return new Channel('test-channel');
+        return new Channel('utility.reverb');
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'reverb.test-notification';
     }
 
     public function broadcastWith()
     {
-        return ['message' => $this->message];
+        return [
+            'title' => $this->title,
+            'message' => $this->message,
+        ];
     }
 }

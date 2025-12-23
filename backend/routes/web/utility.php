@@ -10,6 +10,11 @@ Route::prefix('utility')->middleware('debug.enabled')->group(function () {
     Route::get('/current-settings', [UtilityController::class, 'currentSettings'])->name('utility.current-settings');
     Route::get('/force-flush', [UtilityController::class, 'forceFlush'])->name('utility.force-flush');
     Route::get('/reverb', [UtilityController::class, 'reverb'])->name('utility.reverb');
+
+    Route::prefix('websockets')->group(function () {
+        Route::get('/', [UtilityController::class, 'showWebsocketsIndex'])->name('utility.websockets.index');
+    });
+
     Route::prefix('email')->group(function () {
         Route::get('test', [UtilityController::class, 'emailTest'])->name('utility.email.test');
     });

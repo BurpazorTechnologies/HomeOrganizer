@@ -22,7 +22,7 @@ useEchoChannel<NotificationEvent>(
 </script>
 
 <template>
-    <div class="text-xs text-gray-400 text-center py-2">
-        Listening for test notifications...
+    <div class="">
+        <h1>Listening for test notifications...</h1>
     </div>
 </template>
