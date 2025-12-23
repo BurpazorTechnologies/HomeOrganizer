@@ -1,21 +1,29 @@
 ---
 description: |
   Design system rules: ThemeData, tokens, ThemeExtensions, and avoiding hardcoded styles.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Theming & Design System
 
 ## Tokens
 - ✅ Define colors, spacing, radius, typography as tokens
 - ✅ Use `ThemeExtensions` for custom design tokens
+- ✅ This project’s tokens live in:
+  - `lib/app/theme/app_tokens.dart` (`AppTokens` + `context.tokens`)
+- ✅ This project’s themes live in:
+  - `lib/app/app_theme.dart` (`AppTheme.lightTheme` / `AppTheme.darkTheme`)
 
 ## Usage
 - ✅ No hardcoded colors/fonts in widgets
 - ✅ Use theme text styles (`Theme.of(context).textTheme...`)
 - ✅ Support dark mode + text scaling
+- ✅ Prefer `context.tokens` for spacing/radius instead of magic numbers
 
 ## Components
-- ✅ Shared UI components live in `shared/ui/`
+- ✅ Shared UI components (when introduced) should live in `lib/shared/ui/`
 - ✅ Components accept tokens/styles via theme, not hardcoded
 
 ## NEVER

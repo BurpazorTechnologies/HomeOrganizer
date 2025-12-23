@@ -1,25 +1,34 @@
 ---
 description: |
   go_router routing rules: centralized routes, typed params, deep links, and guarded navigation.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Navigation & Routing (go_router)
 
 ## Centralize routing
-- ✅ Define routes in `app/router/`
-- ✅ Route paths are constants; avoid magic strings scattered in UI
+- ✅ Define routes in `lib/app/router/`:
+  - `app_router.dart` (`appRouterProvider`)
+  - `app_routes.dart` (`AppRoutes` constants)
+- ✅ Route paths are constants (`AppRoutes.*`); avoid magic strings in UI
 
 ## Params
 - ✅ Prefer typed route parameters and validation
 - ✅ Handle missing/invalid params with safe fallback pages
 
 ## Guards
-- ✅ Auth/onboarding guards live in router redirect logic
+- ✅ Auth/onboarding guards live in router `redirect` logic (single source of truth)
+- ✅ Keep auth decisions based on provider state (e.g. `authSessionControllerProvider`)
 - ✅ UI does not contain auth gate logic per screen (keep consistent)
 
 ## Navigation triggers
 - ✅ Navigation is triggered by UI reacting to state/effects
 - ❌ Do not call navigation in build
+
+## Error handling
+- ✅ Router `errorBuilder` should log via `AppLogger` and show a localized fallback message
 
 ## NEVER
 - ❌ Push routes with hardcoded strings in random widgets

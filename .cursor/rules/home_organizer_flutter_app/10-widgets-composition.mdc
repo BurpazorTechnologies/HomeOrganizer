@@ -1,7 +1,10 @@
 ---
 description: |
   Widget composition best practices: small widgets, clean build methods, and separation of concerns.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Widgets & Composition
 
@@ -11,6 +14,8 @@ alwaysApply: false
   - complex UI blocks into private widgets
   - heavy calculations into helpers outside build (or memoize)
 - ✅ Prefer `const` widgets/constructors
+- ✅ Prefer `ConsumerWidget` for provider-driven UI; use `ConsumerStatefulWidget` only when you need local UI state/controllers
+- ✅ If a widget does `await`, ensure you don’t use `context` after the await unless `mounted`/`context.mounted`
 
 ## State usage
 - ✅ Use `StatefulWidget` only for ephemeral UI state:
@@ -21,6 +26,7 @@ alwaysApply: false
 - ✅ Use `LayoutBuilder` for responsive decisions
 - ✅ Prefer `Sliver` patterns for complex scrolling
 - ✅ Avoid deep nesting; create sub-widgets
+- ✅ Prefer design tokens (e.g. `context.tokens.spacingM`) for spacing instead of magic numbers
 
 ## Keys
 - ✅ Only use Keys when needed:

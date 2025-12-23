@@ -1,19 +1,26 @@
 ---
 description: |
   Error handling rules: typed failures, consistent user messaging, structured logging, and crash reporting.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Error Handling & Logging
 
 ## Failures
-- ✅ Use typed failure objects in domain:
+- ✅ Use typed failure objects for app errors:
   - `NetworkFailure`, `AuthFailure`, `ValidationFailure`, etc.
 - ✅ Controllers translate failures into UI-friendly messages/state
+- ✅ In this project, failures are defined in:
+  - `lib/shared/errors/failure.dart` (`Failure` as a Freezed sealed union)
 
 ## Logging
 - ✅ Use a logger package (no print)
 - ✅ Redact secrets/PII
 - ✅ Log with context: feature, action, requestId (if available)
+- ✅ Use `AppLogger` (`lib/shared/logging/app_logger.dart`)
+- ✅ When logging a `Failure`, prefer `failure.logSafeMessage()`
 
 ## Crash reporting
 - ✅ Capture unhandled errors centrally (Crashlytics/Sentry)
@@ -22,3 +29,4 @@ alwaysApply: false
 ## NEVER
 - ❌ Swallow exceptions silently
 - ❌ Show raw server error messages directly to user
+- ❌ Log tokens, credentials, auth headers, or PII

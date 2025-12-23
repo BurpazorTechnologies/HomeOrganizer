@@ -1,7 +1,10 @@
 ---
 description: |
   Model conventions using freezed/json_serializable: immutability, DTO/entity split, and codegen rules.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Models, Serialization, Codegen
 
@@ -9,11 +12,17 @@ alwaysApply: false
 - ✅ Domain entities are immutable and UI-agnostic
 - ✅ DTOs mirror API contracts (version-aware), suffix with `Dto`
 - ✅ Mapping between DTO <-> domain via mappers
+- ✅ Place files consistently:
+  - entities: `lib/features/<feature>/domain/entities/`
+  - DTOs: `lib/features/<feature>/data/dtos/`
+  - mappers: `lib/features/<feature>/data/mappers/`
 
 ## Codegen
 - ✅ Use:
   - `freezed` for unions/immutable classes
   - `json_serializable` for JSON
+- ✅ Analyzer config must keep:
+  - `invalid_annotation_target: ignore` (required for common `@JsonKey(...)` + Freezed patterns)
 - ✅ Commands:
   - `dart run build_runner build --delete-conflicting-outputs`
 

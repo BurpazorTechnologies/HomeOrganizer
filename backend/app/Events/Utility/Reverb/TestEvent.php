@@ -1,5 +1,5 @@
 <?php
-namespace App\Events;
+namespace App\Events\Utility\Reverb;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Queue\SerializesModels;

@@ -1,7 +1,10 @@
 ---
 description: |
   Riverpod conventions: provider naming, state shape, side effects, and async patterns.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # State Management (Riverpod)
 
@@ -10,6 +13,11 @@ alwaysApply: false
   - `fooRepositoryProvider`
   - `fooControllerProvider` / `fooNotifierProvider`
 - ✅ Providers are declared near feature boundaries (not scattered)
+- ✅ Prefer Riverpod primitives that match intent:
+  - `AsyncNotifierProvider<*, *>` for stateful async controllers (e.g. login/session)
+  - `FutureProvider<T>` for read-only async queries (e.g. backend version)
+  - `StateProvider<T>` for simple in-memory state (e.g. `authTokenProvider`)
+- ✅ Repository providers should expose *domain interfaces* (e.g. `Provider<AuthRepository>`), not concrete impls
 
 ## State shape
 - ✅ Prefer explicit state types:
@@ -21,10 +29,12 @@ alwaysApply: false
 - ✅ Side effects live in controllers/notifiers:
   - networking, storage writes, analytics, navigation signals
 - ✅ UI reacts to state changes via listeners/effects (not inside build)
+- ✅ Prefer `ref.listen(...)` for one-off reactions (snackbars/navigation/router refresh), keeping `ref.watch(...)` for rendering
 
 ## Async rules
 - ✅ Always handle loading + error states
 - ✅ Map exceptions into domain failures (don’t leak Dio/Platform exceptions into UI)
+- ✅ Do not store `BuildContext` in notifiers/controllers; pass values in and return state/results
 
 ## NEVER
 - ❌ Call repositories directly from widgets

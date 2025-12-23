@@ -1,7 +1,12 @@
 ---
 description: |
   CI/CD and release discipline: required checks, build steps, signing, and release hygiene.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+  - "home_organizer_flutter_app/pubspec.yaml"
+  - "home_organizer_flutter_app/analysis_options.yaml"
+alwaysApply: true
 ---
 # CI/CD & Release
 
@@ -9,7 +14,9 @@ alwaysApply: false
 - ✅ `dart format --set-exit-if-changed .`
 - ✅ `dart analyze`
 - ✅ `flutter test`
-- ✅ Build per flavor (at least dev + prod)
+- ✅ Build per entrypoint (at least dev + prod):
+  - `flutter build <target> -t lib/main_dev.dart`
+  - `flutter build <target> -t lib/main_prod.dart`
 
 ## Release hygiene
 - ✅ Release checklist includes:

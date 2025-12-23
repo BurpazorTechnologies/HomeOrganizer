@@ -14,7 +14,7 @@ class HomeOrganizerApp extends ConsumerWidget {
 
     return MaterialApp.router(
       onGenerateTitle: (context) =>
-          AppLocalizations.of(context)?.appTitle ?? 'Home Organizer',
+          AppLocalizations.of(context)?.appTitle ?? '',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,

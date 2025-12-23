@@ -20,7 +20,7 @@ svc-pg-migrate:
 	@docker compose exec backend php artisan pg:migrate --fresh
 
 svc-backend-reverb:
-	@docker compose exec app php artisan reverb:start --port=6001 --debug
+	@docker compose exec backend php artisan reverb:start --port=6001 --debug
 
 svc-postgres-init:
 	@docker compose exec postgres bash /docker-entrypoint-initdb.d/10-create-database.sh

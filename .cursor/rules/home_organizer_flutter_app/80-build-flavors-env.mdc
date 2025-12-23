@@ -2,7 +2,10 @@
 description: |
   Build flavors and environment configuration using separate Dart entrypoints (local/dev/prod),
   plus strict rules for AppConfig initialization and safe environment usage.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Environments (local / dev / prod)
 
@@ -24,10 +27,13 @@ Each entrypoint must set `AppConfig` **before** `runApp()` starts. Environment v
 - ✅ Each entrypoint must:
   - load the correct config
   - set `AppConfig` once
-  - then call `runApp(App(...))`
+  - then call `runApp(const ProviderScope(child: HomeOrganizerApp()))`
 - ✅ App code must read config **only** via `AppConfig` (or a single injected config provider)
 - ✅ `main.dart` is not used for environment switching unless explicitly required later
 - ✅ Environment must be decided at process start (entrypoint), not at runtime via toggles
+
+## `--dart-define` usage
+- ✅ `--dart-define` is allowed for non-secret runtime flags (e.g. local-only debugging toggles)
 
 ## Run (choose one)
 ```bash

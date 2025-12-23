@@ -1,7 +1,10 @@
 ---
 description: |
   Testing strategy: unit/widget/integration coverage, mocking rules, and test structure conventions.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Testing
 
@@ -9,6 +12,12 @@ alwaysApply: false
 - ✅ Unit: domain usecases, mappers, repositories (mock sources)
 - ✅ Widget: key screens, error/loading states, navigation triggers
 - ✅ Integration: critical user flows (auth, checkout, core workflows)
+
+## Riverpod testing
+- ✅ Prefer overriding providers in tests:
+  - `ProviderScope(overrides: [...])` for widget tests
+  - `ProviderContainer(overrides: [...])` for unit-style provider tests
+- ✅ Test `AsyncValue` states explicitly (loading/data/error)
 
 ## Conventions
 - ✅ Arrange/Act/Assert structure

@@ -15,14 +15,16 @@ class AppConfig {
   static AppConfig? _instance;
 
   /// Current config for the running app.
-  ///
-  /// Defaults to "local" so a missing [set] doesn't crash in development.
-  static AppConfig get instance =>
-      _instance ??
-      const AppConfig(
-        environment: AppEnvironment.local,
-        apiBaseUrl: 'https://local.homeorganizer.xyz',
+  static AppConfig get instance {
+    final config = _instance;
+    if (config == null) {
+      throw StateError(
+        'AppConfig is not set. Run an environment entrypoint (e.g. lib/main_local.dart) '
+        'that calls AppConfig.set(...) before runApp().',
       );
+    }
+    return config;
+  }
 
   static void set(AppConfig config) {
     _instance = config;

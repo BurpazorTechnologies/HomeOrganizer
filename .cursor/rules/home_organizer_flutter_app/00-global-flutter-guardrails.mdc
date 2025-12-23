@@ -1,7 +1,10 @@
 ---
 description: |
   Global non-negotiable rules for a professional Flutter codebase (architecture, coding standards, boundaries).
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Global Flutter Guardrails
 
@@ -12,6 +15,10 @@ alwaysApply: false
 - **Networking:** Dio
 - **Models:** freezed + json_serializable
 - **DI:** constructor injection + provider-based composition (no service locator in UI)
+- **Environments:** entrypoints + `AppConfig` (`main_local.dart`, `main_dev.dart`, `main_prod.dart`)
+- **i18n:** `flutter_localizations` + `intl` + gen-l10n (`AppLocalizations`)
+- **Logging:** `logger` via `AppLogger`
+- **Storage:** `flutter_secure_storage` for tokens; `shared_preferences` for non-sensitive prefs
 
 ## Non-negotiables
 - ✅ Null-safety always, no `dynamic` unless unavoidable and documented
@@ -19,6 +26,7 @@ alwaysApply: false
 - ✅ No side effects in `build()`:
   - ❌ no network, disk I/O, DB calls, analytics, navigation, dialogs
   - ✅ trigger side effects from controllers/notifiers or `initState`/effects
+- ✅ Do not use `BuildContext` after an `await` in a `State` unless `mounted`/`context.mounted`
 - ✅ UI depends on domain abstractions, never on concrete data implementations
 - ✅ Keep widgets small and composable (extract when complex or deeply nested)
 - ✅ One responsibility per class/file
@@ -41,3 +49,4 @@ alwaysApply: false
 - ❌ Import across features without an explicit public API file/export
 - ❌ Store secrets in source code
 - ❌ Add packages without justification and ownership
+- ❌ Log tokens/credentials/PII (keep HTTP logs redacted by default)

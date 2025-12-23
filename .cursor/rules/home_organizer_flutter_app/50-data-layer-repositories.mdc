@@ -1,17 +1,21 @@
 ---
 description: |
   Repository pattern rules: domain interfaces, data implementations, mapping, caching, and testability.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Data Layer & Repositories
 
 ## Interfaces
 - ✅ Repository interfaces live in `domain/`
 - ✅ Implementations live in `data/`
+- ✅ Expose repos via providers returning interfaces (e.g. `Provider<AuthRepository>`), constructed with shared dependencies like `dioProvider`
 
 ## Mapping
 - ✅ Repository returns domain entities/value objects only
-- ✅ Map exceptions to `Failure` (domain) or typed result
+- ✅ Map exceptions to `Failure` (see `lib/shared/errors/failure.dart`); do not leak Dio exceptions beyond data layer (use `DioFailureMapper`)
 
 ## Caching
 - ✅ If caching exists, document:

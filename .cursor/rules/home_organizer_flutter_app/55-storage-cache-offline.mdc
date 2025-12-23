@@ -1,13 +1,19 @@
 ---
 description: |
   Local storage rules: secure storage, prefs, DB, offline strategy, and data lifecycle.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Storage, Cache, Offline
 
 ## Storage choices
 - ✅ Shared prefs: small non-sensitive flags/settings
-- ✅ Secure storage: tokens/credentials
+- ✅ Secure storage: tokens/credentials via `TokenStorage` + `SecureTokenStorage`
+  - provider: `lib/shared/providers.dart` (`tokenStorageProvider`)
+  - impl: `lib/shared/security/secure_token_storage.dart`
+  - in-memory request auth header token: `lib/shared/security/auth_token_provider.dart` (not source of truth)
 - ✅ DB (Hive/Isar/SQLite): structured offline data (pick one and standardize)
 
 ## Offline strategy

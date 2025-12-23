@@ -7,6 +7,7 @@ class StartupPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
     return Scaffold(
       body: Center(
         child: Column(
@@ -14,7 +15,7 @@ class StartupPage extends StatelessWidget {
           children: [
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
-            Text(l10n?.startupLoading ?? 'Starting…'),
+            Text(l10n.startupLoading),
           ],
         ),
       ),

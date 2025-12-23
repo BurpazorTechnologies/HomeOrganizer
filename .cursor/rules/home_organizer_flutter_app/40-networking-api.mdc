@@ -1,22 +1,28 @@
 ---
 description: |
   Networking rules using Dio: single client, interceptors, typed errors, timeouts, retries, and cancellation.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Networking (Dio)
 
 ## Client setup
-- ✅ One Dio instance configured in `app/di/` (or equivalent)
+- ✅ One Dio instance configured in `lib/shared/networking/dio_provider.dart` (`dioProvider`)
 - ✅ Set:
   - connect/receive/send timeouts
-  - baseUrl per flavor
+  - baseUrl per flavor via `AppConfig.instance.apiBaseUrl`
   - common headers
 
 ## Interceptors
-- ✅ Auth token injection
-- ✅ Request ID / correlation
-- ✅ Safe logging (no secrets/PII)
-- ✅ Error mapping into typed failures
+- ✅ Auth token injection from `authTokenProvider`
+- ✅ Request ID / correlation via `X-Request-Id` (`RequestId.newId()`)
+- ✅ Safe logging (no secrets/PII) using `AppLogger`:
+  - keep auth headers redacted by default
+  - only allow unredacted logs via `--dart-define=UNREDACT_HTTP_LOGS=true` in local debug
+- ✅ Error mapping into typed failures using `DioFailureMapper` (`lib/shared/networking/dio_failure_mapper.dart`)
+- ✅ Local-only TLS relaxation is allowed only for `AppEnvironment.local` (IO only)
 
 ## DTO + mapping
 - ✅ Decode to DTOs, then map to domain entities

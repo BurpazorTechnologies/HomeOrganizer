@@ -1,7 +1,10 @@
 ---
 description: |
   Forms, validation, and input handling: consistent patterns, reuse validators, and proper controller lifecycle.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Forms & Validation
 
@@ -12,6 +15,7 @@ alwaysApply: false
 ## Validators
 - ✅ Validators live in `domain/` (if business rules) or `shared/validators/`
 - ✅ Reuse validators; no duplicated regex across screens
+- ✅ This project’s shared validators live in `lib/shared/validators/` (e.g. `email_validator.dart`)
 
 ## Controllers
 - ✅ Dispose `TextEditingController` and `FocusNode` in `dispose()`
@@ -20,6 +24,7 @@ alwaysApply: false
 ## Submission
 - ✅ Disable submit while loading
 - ✅ Show field-level errors and submit-level errors distinctly
+- ✅ Prefer `AsyncValue` controller state (`isLoading`/`error`) to drive button disabled state and error banners
 
 ## NEVER
 - ❌ Validation logic embedded as large lambdas in widgets

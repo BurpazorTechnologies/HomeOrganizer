@@ -1,14 +1,19 @@
 ---
 description: |
   UI performance rules: minimize rebuild scope, avoid expensive work in build, and handle lists correctly.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # UI Performance & Rebuild Rules
 
 ## Rebuild scope
 - ✅ Keep `Consumer`/`ref.watch` as low as possible in the widget tree
 - ✅ Split large screens into smaller widgets to reduce rebuild blast radius
-- ✅ Use selectors (`select`) for watching small slices of state
+- ✅ Use selectors for small slices of state:
+  - `ref.watch(fooProvider.select((s) => s.someField))`
+- ✅ Prefer `ref.read(...)` inside callbacks/handlers to avoid unnecessary rebuilds
 
 ## Lists
 - ✅ Use `ListView.builder` / `SliverList` for large lists

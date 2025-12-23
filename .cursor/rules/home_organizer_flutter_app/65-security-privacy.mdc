@@ -1,17 +1,22 @@
 ---
 description: |
   Security and privacy rules: secrets, PII handling, secure storage, permissions, and transport safety.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+alwaysApply: true
 ---
 # Security & Privacy
 
 ## Secrets
 - ✅ No API keys in repo
-- ✅ Use flavors + CI secrets + runtime config (`--dart-define` or config files)
+- ✅ Use flavors + CI secrets + runtime config (`--dart-define`)
+- ✅ Config files in `lib/config/{local,dev,prod}.dart` + `AppConfig` are for non-secret environment values (e.g. base URLs)
 
 ## Tokens
-- ✅ Store tokens in secure storage
-- ✅ Avoid keeping tokens in memory longer than necessary
+- ✅ Store tokens in secure storage (`SecureTokenStorage`)
+- ✅ Avoid keeping tokens in memory longer than necessary; `authTokenProvider` is in-memory only (headers convenience), not the source of truth
+- ✅ Always clear tokens on logout
 
 ## PII
 - ✅ Don’t log PII
@@ -24,3 +29,4 @@ alwaysApply: false
 ## NEVER
 - ❌ Hardcode credentials
 - ❌ Log authorization headers, tokens, email addresses, etc.
+- ❌ Disable TLS verification outside `AppEnvironment.local`

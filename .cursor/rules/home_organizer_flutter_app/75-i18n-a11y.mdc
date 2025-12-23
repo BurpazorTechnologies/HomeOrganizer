@@ -1,14 +1,24 @@
 ---
 description: |
   Internationalization and accessibility rules: no hardcoded strings, semantics, text scaling, and usable UI.
-alwaysApply: false
+globs:
+  - "home_organizer_flutter_app/lib/**/*.dart"
+  - "home_organizer_flutter_app/test/**/*.dart"
+  - "home_organizer_flutter_app/lib/l10n/**/*.arb"
+  - "home_organizer_flutter_app/l10n.yaml"
+alwaysApply: true
 ---
 # i18n & Accessibility
 
 ## i18n
 - ✅ No hardcoded user-facing strings
-- ✅ Use `intl` + ARB workflow
+- ✅ Use `intl` + ARB workflow (gen-l10n)
+- ✅ This project’s l10n config:
+  - `home_organizer_flutter_app/l10n.yaml`
+  - ARB: `lib/l10n/app_en.arb`
+  - generated: `lib/l10n/gen/app_localizations.dart` (`AppLocalizations`)
 - ✅ Keep keys consistent and feature-scoped
+- ✅ UI should read strings via `AppLocalizations.of(context)`
 
 ## Accessibility
 - ✅ Add semantics labels for icon-only buttons and custom widgets
