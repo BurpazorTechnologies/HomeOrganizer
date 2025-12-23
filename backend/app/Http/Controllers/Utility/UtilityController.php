@@ -46,6 +46,12 @@ class UtilityController extends Controller
                         'method' => 'GET',
                         'url' => route('utility.reverb'),
                     ],
+                    [
+                        'label' => 'Websockets',
+                        'description' => 'Test WebSocket connections and realtime events.',
+                        'method' => 'GET',
+                        'url' => route('utility.websockets.index'),
+                    ],
                 ],
             ],
             [
