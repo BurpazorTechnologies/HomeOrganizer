@@ -28,6 +28,37 @@ alwaysApply: true
 - **Configuration via config/*; secrets via .env** (no hardcoded creds) - see rule 80
 - **Tests with Pest in tests/**; create with `php artisan make:test --pest` - see rule 70
 
+# Routing (Web / Inertia)
+- **Do not use route closures** for pages or non-trivial endpoints.
+- **Never render Inertia pages inside routes** (`Inertia::render(...)` belongs in a controller action).
+- **OK exception:** trivial one-liner routes that return a static response (e.g., health check JSON).
+- For internal tooling / test pages:
+  - Put them under the existing **`utility`** route group and gate with **`debug.enabled`**.
+  - Use descriptive route names and keep route files declarative.
+
+## Example (BAD vs GOOD)
+
+### ❌ BAD (do not generate)
+```php
+Route::get('/test-notification-listener', function () {
+    return Inertia::render('Utility/Websockets/TestNotificationListener');
+})->name('utility.websockets.test-notification-listener');
+```
+
+### ✅ GOOD (generate this)
+```php
+Route::get('/test-notification-listener', [UtilityController::class, 'showTestNotificationListener'])
+    ->name('utility.websockets.test-notification-listener');
+```
+
+```php
+// In App\Http\Controllers\Utility\UtilityController
+public function showTestNotificationListener(): \Inertia\Response
+{
+    return \Inertia\Inertia::render('Utility/Websockets/TestNotificationListener');
+}
+```
+
 # Error Handling & Responses
 - **Use appropriate HTTP status codes** (200, 201, 400, 401, 403, 404, 422, 500)
 - **Return consistent JSON error responses** with message and optional details
