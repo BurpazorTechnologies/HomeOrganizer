@@ -71,12 +71,6 @@ class UtilityController extends Controller
                 'description' => 'Visual regression helpers and theme previews.',
                 'links' => [
                     [
-                        'label' => 'Code Highlighter Check',
-                        'description' => 'Runs a sample snippet through Shiki.',
-                        'method' => 'GET',
-                        'url' => route('utility.ui.checkCodeHighlighter'),
-                    ],
-                    [
                         'label' => 'UI Preview',
                         'description' => 'Inertia playground for shared UI components.',
                         'method' => 'GET',
@@ -261,15 +255,6 @@ class UtilityController extends Controller
         }
 
         return view($view, $data);
-    }
-
-    public function checkCodeHighlighter()
-    {
-        return Shiki::highlight(
-            code: '<?php echo "Hello World"; ?>',
-            language: 'php',
-            theme: 'github-light',
-        );
     }
 
     public function getRolesPermissions(): InertiaResponse

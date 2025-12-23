@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import Header from '@/Components/LandingPage/Header.vue';
 
 </script>
 
 <template>
     <Header/>
+    <h1>Insert your code here</h1>
 </template>
 
 <style scoped>

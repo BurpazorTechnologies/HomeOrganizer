@@ -20,7 +20,6 @@ Route::prefix('utility')->middleware('debug.enabled')->group(function () {
     });
 
     Route::prefix('ui')->group(function () {
-        Route::get('/check-code-highlighter', [UtilityController::class, 'checkCodeHighlighter'])->name('utility.ui.checkCodeHighlighter');
         Route::get('/preview', [UtilityController::class, 'showPreview'])->name('utility.ui.preview');
         Route::get('/theme/{component}', [UtilityController::class, 'showThemeComponent'])->name('utility.ui.theme');
     });
