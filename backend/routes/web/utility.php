@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Utility\UtilityController;
+use App\Http\Controllers\Utility\GridUtilityController;
 
 Route::prefix('utility')->middleware('debug.enabled')->group(function () {
 
@@ -22,6 +23,10 @@ Route::prefix('utility')->middleware('debug.enabled')->group(function () {
     Route::prefix('ui')->group(function () {
         Route::get('/preview', [UtilityController::class, 'showPreview'])->name('utility.ui.preview');
         Route::get('/theme/{component}', [UtilityController::class, 'showThemeComponent'])->name('utility.ui.theme');
+    });
+
+    Route::prefix('grid')->group(function () {
+        Route::get('/', [GridUtilityController::class, 'index'])->name('utility.grid.index');
     });
 
     Route::prefix('admin')->group(function () {
