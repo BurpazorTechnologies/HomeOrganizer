@@ -241,6 +241,16 @@ export class ShapeManager {
     }
 
     /**
+     * Enable or disable dragging for all shapes
+     * Used to disable shape dragging when pan mode is active
+     */
+    setShapesDraggable(draggable: boolean): void {
+        this.shapes.forEach(({ node }) => {
+            node.draggable(draggable);
+        });
+    }
+
+    /**
      * Clear all shapes
      */
     clear(): void {

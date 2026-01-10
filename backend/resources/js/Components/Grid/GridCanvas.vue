@@ -341,6 +341,11 @@ watch(() => props.isPanMode, (newValue, oldValue) => {
         stage.draggable(newValue || false);
     }
 
+    // Disable shape dragging when pan mode is active
+    if (shapeManager) {
+        shapeManager.setShapesDraggable(!newValue);
+    }
+
     // When pan mode is disabled, refocus on selected shape
     if (oldValue === true && newValue === false) {
         focusOnSelectedShape();
