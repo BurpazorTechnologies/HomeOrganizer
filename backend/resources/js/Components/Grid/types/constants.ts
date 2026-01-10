@@ -13,7 +13,7 @@ export const GRID_CONSTANTS = {
 
   // Zoom settings
   DEFAULT_ZOOM: 1.0,            // 100%
-  MIN_ZOOM: 0.1,                // 10% - maximum zoom out
+  MIN_ZOOM: 0.33,               // 33% - maximum zoom out
   MAX_ZOOM: 5.0,                // 500% - maximum zoom in
   ZOOM_STEP: 1.2,               // multiplier for zoom in/out
   ZOOM_WHEEL_SENSITIVITY: 1.05, // mouse wheel zoom sensitivity

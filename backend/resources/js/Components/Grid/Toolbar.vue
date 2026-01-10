@@ -13,12 +13,14 @@ interface Props {
   description?: string;
   actions?: ToolbarAction[];
   currentZoom?: number;
+  isPanMode?: boolean;
 }
 
 interface Emits {
   (e: 'zoom-in'): void;
   (e: 'zoom-out'): void;
   (e: 'reset-zoom'): void;
+  (e: 'toggle-pan'): void;
 }
 
 const props = defineProps<Props>();
@@ -145,7 +147,26 @@ const getZoomPercentage = () => {
       <!-- Zoom Controls -->
       <div class="mt-2 pt-2 border-t border-gray-200">
         <div class="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-          Zoom
+          View Controls
+        </div>
+        <div class="flex items-center gap-1.5 mb-1.5">
+          <!-- Move/Pan Button -->
+          <button
+            @click="emit('toggle-pan')"
+            :class="isPanMode ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'"
+            class="p-1 rounded transition-colors"
+            title="Move/Pan Canvas"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-3 w-3"
+              fill="currentColor"
+              viewBox="0 0 384 384"
+            >
+              <path d="M192 0l-64 64h48v88H88V104L24 168l64 64v-48h88v88h-48l64 64 64-64h-48v-88h88v48l64-64-64-64v48h-88V64h48z"/>
+            </svg>
+          </button>
+          <span class="text-[9px] text-gray-600">{{ isPanMode ? 'Pan Active' : 'Pan' }}</span>
         </div>
         <div class="flex items-center gap-1.5">
           <!-- Zoom Out Button -->

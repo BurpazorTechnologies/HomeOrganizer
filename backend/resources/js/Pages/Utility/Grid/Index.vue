@@ -28,6 +28,9 @@ const currentZoom = ref<number>(1.0);
 const canvasWidth = ref<number>(0);
 const canvasHeight = ref<number>(0);
 
+// Pan mode state
+const isPanMode = ref<boolean>(false);
+
 // Handle canvas click
 const handleCanvasClick = (position: { x: number; y: number }) => {
     lastClickPosition.value = position;
@@ -64,6 +67,11 @@ const handleResetZoom = () => {
     canvasRef.value?.resetZoom();
 };
 
+// Pan mode handlers
+const handleTogglePan = () => {
+    isPanMode.value = !isPanMode.value;
+};
+
 </script>
 
 <template>
@@ -77,9 +85,11 @@ const handleResetZoom = () => {
             :description="stepDescription"
             :actions="stepActions"
             :current-zoom="currentZoom"
+            :is-pan-mode="isPanMode"
             @zoom-in="handleZoomIn"
             @zoom-out="handleZoomOut"
             @reset-zoom="handleResetZoom"
+            @toggle-pan="handleTogglePan"
         />
 
         <!-- Debug Widget - Only shows in development mode -->
@@ -97,6 +107,7 @@ const handleResetZoom = () => {
             :grid-size="gridSize"
             :snap-to-grid="true"
             :scale="1"
+            :is-pan-mode="isPanMode"
             @click="handleCanvasClick"
             @step-change="handleStepChange"
             @zoom-change="handleZoomChange"

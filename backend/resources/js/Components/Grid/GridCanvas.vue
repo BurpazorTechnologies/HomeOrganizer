@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Konva from 'konva';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { GridManager } from '@/Components/Grid/core/GridManager';
 import { ShapeManager } from '@/Components/Grid/core/ShapeManager';
 import { TransformManager } from '@/Components/Grid/core/TransformManager';
@@ -14,6 +14,7 @@ interface Props {
     gridSize: number;
     snapToGrid: boolean;
     scale: number;
+    isPanMode?: boolean;
 }
 
 interface Emits {
@@ -60,7 +61,7 @@ function initializeCanvas(): void {
         container: containerRef.value,
         width,
         height,
-        draggable: false,
+        draggable: props.isPanMode || false,
     });
 
     // Create layers
@@ -263,6 +264,13 @@ defineExpose({
     zoomOut,
     resetZoom,
     getCurrentZoom,
+});
+
+// ==================== Watch Pan Mode ====================
+watch(() => props.isPanMode, (newValue) => {
+    if (stage) {
+        stage.draggable(newValue || false);
+    }
 });
 
 // ==================== Lifecycle Hooks ====================
