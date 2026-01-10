@@ -55,6 +55,8 @@ export const SHAPE_COLORS = {
   DEFAULT_STROKE: '#0284c7',    // blue stroke
   SELECTED_STROKE: '#0369a1',   // darker blue when selected
   HOVER_FILL: '#bfdbfe',        // darker fill on hover
+  LOT_AREA_FILL: '#d1fae5',     // light green for lot area (Step 1)
+  LOT_AREA_STROKE: '#059669',   // green stroke for lot area
 } as const;
 
 /**
