@@ -12,9 +12,17 @@ interface Props {
   currentStep: Step;
   description?: string;
   actions?: ToolbarAction[];
+  currentZoom?: number;
+}
+
+interface Emits {
+  (e: 'zoom-in'): void;
+  (e: 'zoom-out'): void;
+  (e: 'reset-zoom'): void;
 }
 
 const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
 
 // Collapse state
 const isCollapsed = ref(false);
@@ -41,6 +49,32 @@ const getButtonClasses = (variant?: string) => {
     default:
       return `${baseClasses} bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed`;
   }
+};
+
+/**
+ * Compute zoom capabilities based on current zoom level
+ */
+const canZoomIn = () => {
+  if (!props.currentZoom) return false;
+  return props.currentZoom < 1.0;
+};
+
+const canZoomOut = () => {
+  if (!props.currentZoom) return false;
+  return props.currentZoom > 0.1;
+};
+
+const isZoomedOut = () => {
+  if (!props.currentZoom) return false;
+  return props.currentZoom < 1.0;
+};
+
+/**
+ * Get zoom percentage
+ */
+const getZoomPercentage = () => {
+  if (!props.currentZoom) return '100%';
+  return `${Math.round(props.currentZoom * 100)}%`;
 };
 </script>
 
@@ -104,6 +138,65 @@ const getButtonClasses = (variant?: string) => {
             @click="action.action"
           >
             {{ action.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Zoom Controls -->
+      <div class="mt-2 pt-2 border-t border-gray-200">
+        <div class="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          Zoom
+        </div>
+        <div class="flex items-center gap-1.5">
+          <!-- Zoom Out Button -->
+          <button
+            @click="emit('zoom-out')"
+            :disabled="!canZoomOut()"
+            class="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+            title="Zoom Out"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-3 w-3 text-gray-700"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+            </svg>
+          </button>
+
+          <!-- Zoom Percentage Display -->
+          <div class="text-[10px] font-mono font-semibold text-gray-900 min-w-[32px] text-center">
+            {{ getZoomPercentage() }}
+          </div>
+
+          <!-- Zoom In Button -->
+          <button
+            @click="emit('zoom-in')"
+            :disabled="!canZoomIn()"
+            class="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+            title="Zoom In"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-3 w-3 text-gray-700"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+
+          <!-- Reset Zoom Button (only shows when zoomed out) -->
+          <button
+            v-if="isZoomedOut()"
+            @click="emit('reset-zoom')"
+            class="ml-1 px-1.5 py-0.5 text-[9px] rounded bg-blue-100 hover:bg-blue-200 text-blue-700 transition-colors"
+            title="Reset Zoom"
+          >
+            Reset
           </button>
         </div>
       </div>

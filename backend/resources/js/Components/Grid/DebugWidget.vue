@@ -10,6 +10,9 @@ import { ref } from 'vue';
 interface Props {
   gridSize: number;
   lastClickPosition: { x: number; y: number } | null;
+  canvasWidth?: number;
+  canvasHeight?: number;
+  currentZoom?: number;
 }
 
 const props = defineProps<Props>();
@@ -32,6 +35,29 @@ const getGridCoordinates = (pixelX: number, pixelY: number) => {
   return {
     gridX: Math.floor(pixelX / props.gridSize),
     gridY: Math.floor(pixelY / props.gridSize)
+  };
+};
+
+// Calculate grid area dimensions
+const getGridAreaDimensions = () => {
+  if (!props.canvasWidth || !props.canvasHeight) {
+    return null;
+  }
+
+  const zoom = props.currentZoom || 1.0;
+
+  // Adjust for zoom - when zoomed out, visible area is larger
+  const visibleWidth = props.canvasWidth / zoom;
+  const visibleHeight = props.canvasHeight / zoom;
+
+  const gridSquaresX = Math.floor(visibleWidth / props.gridSize);
+  const gridSquaresY = Math.floor(visibleHeight / props.gridSize);
+
+  return {
+    squaresX: gridSquaresX,
+    squaresY: gridSquaresY,
+    pixelsX: Math.round(visibleWidth),
+    pixelsY: Math.round(visibleHeight),
   };
 };
 </script>
@@ -70,6 +96,27 @@ const getGridCoordinates = (pixelX: number, pixelY: number) => {
         <div class="flex items-center justify-between gap-3">
           <span class="text-[10px] text-gray-600">Grid Size:</span>
           <span class="text-[10px] font-mono font-semibold text-gray-900">{{ gridSize }}px</span>
+        </div>
+
+        <!-- Grid Area Dimensions -->
+        <div v-if="getGridAreaDimensions()" class="pt-1.5 border-t border-gray-100">
+          <div class="text-[10px] text-gray-500 mb-0.5">Visible Grid Area:</div>
+          <div class="space-y-0.5">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-[10px] text-gray-600">Width:</span>
+              <span class="text-[10px] font-mono font-semibold text-green-600">
+                {{ getGridAreaDimensions()?.squaresX }} squares
+                <span class="text-gray-400">({{ getGridAreaDimensions()?.pixelsX }}px)</span>
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-[10px] text-gray-600">Height:</span>
+              <span class="text-[10px] font-mono font-semibold text-green-600">
+                {{ getGridAreaDimensions()?.squaresY }} squares
+                <span class="text-gray-400">({{ getGridAreaDimensions()?.pixelsY }}px)</span>
+              </span>
+            </div>
+          </div>
         </div>
 
         <!-- Last Click Position -->

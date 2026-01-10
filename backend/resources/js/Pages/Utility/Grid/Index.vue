@@ -21,6 +21,13 @@ const currentStep = ref<Step>(DEFAULT_STEP);
 const stepDescription = ref<string>('');
 const stepActions = ref<ToolbarAction[]>([]);
 
+// Zoom state
+const currentZoom = ref<number>(1.0);
+
+// Canvas dimensions for debug
+const canvasWidth = ref<number>(0);
+const canvasHeight = ref<number>(0);
+
 // Handle canvas click
 const handleCanvasClick = (position: { x: number; y: number }) => {
     lastClickPosition.value = position;
@@ -31,6 +38,30 @@ const handleStepChange = (stepInfo: StepInfo) => {
     currentStep.value = stepInfo.step;
     stepDescription.value = stepInfo.description;
     stepActions.value = stepInfo.actions;
+};
+
+// Handle zoom changes from canvas
+const handleZoomChange = (zoom: number) => {
+    currentZoom.value = zoom;
+};
+
+// Handle canvas resize for debug info
+const handleCanvasResize = (width: number, height: number) => {
+    canvasWidth.value = width;
+    canvasHeight.value = height;
+};
+
+// Zoom control handlers
+const handleZoomIn = () => {
+    canvasRef.value?.zoomIn();
+};
+
+const handleZoomOut = () => {
+    canvasRef.value?.zoomOut();
+};
+
+const handleResetZoom = () => {
+    canvasRef.value?.resetZoom();
 };
 
 </script>
@@ -45,12 +76,19 @@ const handleStepChange = (stepInfo: StepInfo) => {
             :current-step="currentStep"
             :description="stepDescription"
             :actions="stepActions"
+            :current-zoom="currentZoom"
+            @zoom-in="handleZoomIn"
+            @zoom-out="handleZoomOut"
+            @reset-zoom="handleResetZoom"
         />
 
         <!-- Debug Widget - Only shows in development mode -->
         <DebugWidget
             :grid-size="gridSize"
             :last-click-position="lastClickPosition"
+            :canvas-width="canvasWidth"
+            :canvas-height="canvasHeight"
+            :current-zoom="currentZoom"
         />
 
         <!-- Main Canvas -->
@@ -61,6 +99,8 @@ const handleStepChange = (stepInfo: StepInfo) => {
             :scale="1"
             @click="handleCanvasClick"
             @step-change="handleStepChange"
+            @zoom-change="handleZoomChange"
+            @resize="handleCanvasResize"
         />
     </div>
 </template>

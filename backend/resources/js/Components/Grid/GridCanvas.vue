@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import Konva from 'konva';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { GridManager } from '@/Components/Grid/core/GridManager';
 import { ShapeManager } from '@/Components/Grid/core/ShapeManager';
 import { TransformManager } from '@/Components/Grid/core/TransformManager';
 import { LabelManager } from '@/Components/Grid/core/LabelManager';
 import { StepOrchestrator } from '@/Components/Grid/core/StepOrchestrator';
+import { ZoomManager } from '@/Components/Grid/core/ZoomManager';
+import { EVENT_TIMING } from '@/Components/Grid/types/constants';
 import type { StepInfo } from '@/Components/Grid/types/orchestration';
 // ==================== Props & Emits ====================
 interface Props {
@@ -17,6 +19,8 @@ interface Props {
 interface Emits {
     (e: 'click', position: { x: number; y: number }): void;
     (e: 'stepChange', stepInfo: StepInfo): void;
+    (e: 'zoomChange', zoom: number): void;
+    (e: 'resize', width: number, height: number): void;
 }
 
 const props = defineProps<Props>();
@@ -34,9 +38,13 @@ let gridManager: GridManager | null = null;
 let shapeManager: ShapeManager | null = null;
 let transformManager: TransformManager | null = null;
 let labelManager: LabelManager | null = null;
+let zoomManager: ZoomManager | null = null;
 
 // Step orchestrator
 let stepOrchestrator: StepOrchestrator | null = null;
+
+// Wheel zoom throttle
+let wheelTimeout: NodeJS.Timeout | null = null;
 
 function initializeCanvas(): void {
     if (!containerRef.value) {
@@ -78,10 +86,14 @@ function initializeManagers(): void {
 
     gridManager?.redrawGrid();
 
-    // Shape Manager
+    // Zoom Manager (initialize early so we can pass getZoomScale to other managers)
+    zoomManager = new ZoomManager(stage);
+
+    // Shape Manager - pass zoom scale getter for drag boundary calculation
     shapeManager = new ShapeManager(stage, shapeLayer, {
         gridSize: props.gridSize,
         snapEnabled: props.snapToGrid,
+        getZoomScale: () => zoomManager?.getCurrentZoom() || 1.0,
     });
 
     // Transform Manager
@@ -92,6 +104,13 @@ function initializeManagers(): void {
 
     // Label Manager
     labelManager = new LabelManager(stage, shapeLayer);
+
+    // Listen to zoom changes and emit to parent
+    zoomManager.onZoomChange((zoom) => {
+        emit('zoomChange', zoom);
+        // Redraw grid when zoom changes
+        gridManager?.redrawGrid();
+    });
 
     // Handle shape transforms
     transformManager.onTransform((shapeId, dimensions) => {
@@ -120,6 +139,10 @@ function initializeManagers(): void {
 
     // Emit initial step info
     emitStepChange();
+    // Emit initial zoom level
+    emit('zoomChange', zoomManager.getCurrentZoom());
+    // Emit initial canvas size
+    emit('resize', stage.width(), stage.height());
 }
 
 /**
@@ -171,22 +194,89 @@ function setupEventHandlers(): void {
             emitStepChange();
         }
     });
+
+    // Mouse wheel zoom with throttle
+    stage.on('wheel', (e) => {
+        e.evt.preventDefault();
+
+        // Clear existing timeout
+        if (wheelTimeout) {
+            clearTimeout(wheelTimeout);
+        }
+
+        // Throttle wheel events
+        wheelTimeout = setTimeout(() => {
+            const delta = e.evt.deltaY;
+            zoomManager?.zoomWheel(delta);
+        }, EVENT_TIMING.WHEEL_THROTTLE);
+    });
 }
 
 // ==================== Window Resize Handler ====================
 function handleWindowResize(): void {
     if (!stage || !containerRef.value) return;
 
-    stage.width(containerRef.value.offsetWidth);
-    stage.height(containerRef.value.offsetHeight);
+    const newWidth = containerRef.value.offsetWidth;
+    const newHeight = containerRef.value.offsetHeight;
+
+    stage.width(newWidth);
+    stage.height(newHeight);
 
     gridManager?.redrawGrid();
+
+    // Emit resize event
+    emit('resize', newWidth, newHeight);
 }
+
+// ==================== Public Methods (exposed to parent) ====================
+/**
+ * Zoom in
+ */
+function zoomIn(): boolean {
+    return zoomManager?.zoomIn() || false;
+}
+
+/**
+ * Zoom out
+ */
+function zoomOut(): boolean {
+    return zoomManager?.zoomOut() || false;
+}
+
+/**
+ * Reset zoom to default
+ */
+function resetZoom(): void {
+    zoomManager?.resetZoom();
+}
+
+/**
+ * Get current zoom level
+ */
+function getCurrentZoom(): number {
+    return zoomManager?.getCurrentZoom() || 1.0;
+}
+
+// Expose methods to parent component
+defineExpose({
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    getCurrentZoom,
+});
 
 // ==================== Lifecycle Hooks ====================
 onMounted(() => {
     initializeCanvas();
     window.addEventListener('resize', handleWindowResize);
+});
+
+onUnmounted(() => {
+    // Clean up wheel timeout
+    if (wheelTimeout) {
+        clearTimeout(wheelTimeout);
+    }
+    window.removeEventListener('resize', handleWindowResize);
 });
 </script>
 

@@ -17,6 +17,7 @@ export class ShapeManager {
     private selectedShapeId: string | null = null;
     private gridSize: number;
     private snapEnabled: boolean;
+    private getZoomScale: () => number;
 
     constructor(
         stage: Konva.Stage,
@@ -24,12 +25,14 @@ export class ShapeManager {
         options: {
             gridSize: number;
             snapEnabled: boolean;
+            getZoomScale?: () => number;
         }
     ) {
         this.stage = stage;
         this.layer = layer;
         this.gridSize = options.gridSize;
         this.snapEnabled = options.snapEnabled;
+        this.getZoomScale = options.getZoomScale || (() => 1.0);
     }
 
     /**
@@ -79,8 +82,11 @@ export class ShapeManager {
             draggable: true,
             // Constrain dragging to canvas bounds with grid snapping
             dragBoundFunc: (pos) => {
-                const stageWidth = this.stage.width();
-                const stageHeight = this.stage.height();
+                const zoomScale = this.getZoomScale();
+
+                // Calculate visible area based on zoom
+                const stageWidth = this.stage.width() / zoomScale;
+                const stageHeight = this.stage.height() / zoomScale;
 
                 // Get shape dimensions
                 const shapeWidth = rect.width() * rect.scaleX();
@@ -90,7 +96,7 @@ export class ShapeManager {
                 let newX = pos.x;
                 let newY = pos.y;
 
-                // Constrain to canvas boundaries
+                // Constrain to canvas boundaries (accounting for zoom)
                 newX = Math.max(0, Math.min(newX, stageWidth - shapeWidth));
                 newY = Math.max(0, Math.min(newY, stageHeight - shapeHeight));
 
