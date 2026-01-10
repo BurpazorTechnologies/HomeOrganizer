@@ -22,6 +22,7 @@ interface Emits {
     (e: 'stepChange', stepInfo: StepInfo): void;
     (e: 'zoomChange', zoom: number): void;
     (e: 'resize', width: number, height: number): void;
+    (e: 'update:isPanMode', value: boolean): void;
 }
 
 const props = defineProps<Props>();
@@ -46,6 +47,10 @@ let stepOrchestrator: StepOrchestrator | null = null;
 
 // Wheel zoom throttle
 let wheelTimeout: NodeJS.Timeout | null = null;
+
+// Middle mouse button pan state
+let isMiddleButtonPanActive = false;
+let previousPanModeState = false;
 
 function initializeCanvas(): void {
     if (!containerRef.value) {
@@ -210,6 +215,39 @@ function setupEventHandlers(): void {
             const delta = e.evt.deltaY;
             zoomManager?.zoomWheel(delta);
         }, EVENT_TIMING.WHEEL_THROTTLE);
+    });
+
+    // Middle mouse button pan - activate on hold
+    stage.on('mousedown', (e) => {
+        // Check if middle mouse button (button 1)
+        if (e.evt.button === 1) {
+            e.evt.preventDefault();
+
+            // Store previous pan mode state
+            previousPanModeState = props.isPanMode || false;
+
+            // Activate temporary pan mode
+            isMiddleButtonPanActive = true;
+            stage!.draggable(true);
+
+            // Emit to parent to update toolbar button state
+            emit('update:isPanMode', true);
+        }
+    });
+
+    // Middle mouse button pan - deactivate on release
+    stage.on('mouseup', (e) => {
+        // Check if middle mouse button (button 1)
+        if (e.evt.button === 1 && isMiddleButtonPanActive) {
+            e.evt.preventDefault();
+
+            // Deactivate temporary pan mode
+            isMiddleButtonPanActive = false;
+            stage!.draggable(previousPanModeState);
+
+            // Emit to parent to restore previous state
+            emit('update:isPanMode', previousPanModeState);
+        }
     });
 }
 

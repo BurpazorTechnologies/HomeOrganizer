@@ -110,7 +110,7 @@ const handleTogglePan = () => {
             :grid-size="gridSize"
             :snap-to-grid="true"
             :scale="1"
-            :is-pan-mode="isPanMode"
+            v-model:is-pan-mode="isPanMode"
             @click="handleCanvasClick"
             @step-change="handleStepChange"
             @zoom-change="handleZoomChange"
