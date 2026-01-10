@@ -18,6 +18,7 @@ const canvasRef = ref<InstanceType<typeof GridCanvas> | null>(null);
     <div class="w-screen h-screen overflow-hidden bg-gray-100 relative">
         <GridCanvas ref="canvasRef" 
         :grid-size="gridSize"
+        :snap-to-grid="true"
         :scale="1"
         />
     </div>

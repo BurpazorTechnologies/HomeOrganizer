@@ -1,7 +1,8 @@
 
 import Konva from 'konva';
+import { GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 import type { VisibleBounds, GridConfig } from '@/Components/Grid/types/grid';
-import { GRID_CONSTANTS } from '../types/constants';
+
 export class GridManager {
   private layer: Konva.Layer;
   private stage: Konva.Stage;

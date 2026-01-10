@@ -6,6 +6,7 @@ import { GridManager } from '@/Components/Grid/core/GridManager';
 // ==================== Props & Emits ====================
 interface Props {
     gridSize: number;
+    snapToGrid: boolean;
     scale: number;
 }
 
@@ -35,7 +36,7 @@ function initializeCanvas(): void {
         container: containerRef.value,
         width,
         height,
-        draggable: true,
+        draggable: false,
     });
 
     // Create layers
@@ -57,6 +58,8 @@ function initializeManagers(): void {
         snapEnabled: props.snapToGrid,
         visible: true,
     });
+
+    gridManager?.redrawGrid();
 }
 
 // ==================== Window Resize Handler ====================
@@ -65,7 +68,7 @@ function handleWindowResize(): void {
 
     stage.width(containerRef.value.offsetWidth);
     stage.height(containerRef.value.offsetHeight);
-    console.log(gridManager);
+
     gridManager?.redrawGrid();
 }
 
