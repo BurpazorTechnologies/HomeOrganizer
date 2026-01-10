@@ -223,11 +223,12 @@ function setupEventHandlers(): void {
         }, EVENT_TIMING.WHEEL_THROTTLE);
     });
 
-    // Middle mouse button pan - activate on hold
-    stage.on('mousedown', (e) => {
+    // Middle mouse button pan - use content event to capture all clicks
+    // Use capture phase to intercept before Konva processes it
+    stage.content.addEventListener('mousedown', (e: MouseEvent) => {
         // Check if middle mouse button (button 1)
-        if (e.evt.button === 1) {
-            e.evt.preventDefault();
+        if (e.button === 1) {
+            e.preventDefault();
 
             // Store previous pan mode state
             previousPanModeState = props.isPanMode || false;
@@ -236,25 +237,35 @@ function setupEventHandlers(): void {
             isMiddleButtonPanActive = true;
             stage!.draggable(true);
 
+            // Disable shape dragging during middle button pan
+            if (shapeManager) {
+                shapeManager.setShapesDraggable(false);
+            }
+
             // Emit to parent to update toolbar button state
             emit('update:isPanMode', true);
         }
-    });
+    }, true); // Use capture phase
 
     // Middle mouse button pan - deactivate on release
-    stage.on('mouseup', (e) => {
+    stage.content.addEventListener('mouseup', (e: MouseEvent) => {
         // Check if middle mouse button (button 1)
-        if (e.evt.button === 1 && isMiddleButtonPanActive) {
-            e.evt.preventDefault();
+        if (e.button === 1 && isMiddleButtonPanActive) {
+            e.preventDefault();
 
             // Deactivate temporary pan mode
             isMiddleButtonPanActive = false;
             stage!.draggable(previousPanModeState);
 
+            // Re-enable shape dragging if pan mode is not active
+            if (shapeManager && !previousPanModeState) {
+                shapeManager.setShapesDraggable(true);
+            }
+
             // Emit to parent to restore previous state
             emit('update:isPanMode', previousPanModeState);
         }
-    });
+    }, true); // Use capture phase
 }
 
 // ==================== Window Resize Handler ====================
