@@ -7,6 +7,7 @@ import { TransformManager } from '@/Components/Grid/core/TransformManager';
 import { LabelManager } from '@/Components/Grid/core/LabelManager';
 import { StepOrchestrator } from '@/Components/Grid/core/StepOrchestrator';
 import { ZoomManager } from '@/Components/Grid/core/ZoomManager';
+import { LayerManager } from '@/Components/Grid/core/LayerManager';
 import { EVENT_TIMING } from '@/Components/Grid/types/constants';
 import type { StepInfo } from '@/Components/Grid/types/orchestration';
 // ==================== Props & Emits ====================
@@ -41,6 +42,7 @@ let shapeManager: ShapeManager | null = null;
 let transformManager: TransformManager | null = null;
 let labelManager: LabelManager | null = null;
 let zoomManager: ZoomManager | null = null;
+let layerManager: LayerManager | null = null;
 
 // Step orchestrator
 let stepOrchestrator: StepOrchestrator | null = null;
@@ -111,6 +113,9 @@ function initializeManagers(): void {
     // Label Manager
     labelManager = new LabelManager(stage, shapeLayer);
 
+    // Layer Manager
+    layerManager = new LayerManager();
+
     // Listen to zoom changes and emit to parent
     zoomManager.onZoomChange((zoom) => {
         emit('zoomChange', zoom);
@@ -133,6 +138,7 @@ function initializeManagers(): void {
         transformManager,
         labelManager,
         gridManager,
+        layerManager,
     });
 
     // Listen to step changes and emit to parent
@@ -326,6 +332,33 @@ function focusOnSelectedShape(): void {
     gridManager.redrawGrid();
 }
 
+/**
+ * Recenter to the current layer's primary shape
+ * Used when user pans too far and needs to find their way back
+ */
+function recenterToLayer(): void {
+    if (!shapeManager || !zoomManager || !layerManager || !gridManager) return;
+
+    // Get the primary shape ID from current layer
+    const primaryShapeId = layerManager.getCurrentPrimaryShapeId();
+    if (!primaryShapeId) return;
+
+    // Get the shape data
+    const shape = shapeManager.getShape(primaryShapeId);
+    if (!shape) return;
+
+    // Focus on the primary shape
+    zoomManager.focusOnShape({
+        x: shape.x,
+        y: shape.y,
+        width: shape.width,
+        height: shape.height,
+    });
+
+    // Redraw grid to account for the new stage position
+    gridManager.redrawGrid();
+}
+
 // Expose methods to parent component
 defineExpose({
     zoomIn,
@@ -333,6 +366,7 @@ defineExpose({
     resetZoom,
     getCurrentZoom,
     focusOnSelectedShape,
+    recenterToLayer,
 });
 
 // ==================== Watch Pan Mode ====================

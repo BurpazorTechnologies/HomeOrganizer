@@ -21,9 +21,13 @@ import { STEPS } from '@/Components/Grid/types/steps';
 
 export class Step1LotArea extends BaseStep {
   private lotAreaShape: RectangleShape | null = null;
+  private layerId: string = 'layer_1';
 
   constructor(managers: any) {
     super(STEPS.LOT_AREA, managers);
+
+    // Create layer for Step 1
+    this.managers.layerManager?.createLayer(STEPS.LOT_AREA);
   }
 
   /**
@@ -119,6 +123,11 @@ export class Step1LotArea extends BaseStep {
       }
     );
 
+    // Add shape to layer as primary shape
+    if (this.lotAreaShape) {
+      this.managers.layerManager?.addShapeToLayer(this.layerId, this.lotAreaShape.id, true);
+    }
+
     // Create label for the shape
     this.managers.labelManager?.updateLabel(this.lotAreaShape.id, {
       x: this.lotAreaShape.x,
@@ -136,6 +145,9 @@ export class Step1LotArea extends BaseStep {
    */
   private deleteLotArea(): void {
     if (!this.lotAreaShape) return;
+
+    // Remove from layer
+    this.managers.layerManager?.removeShapeFromLayer(this.layerId, this.lotAreaShape.id);
 
     this.deleteShape(this.lotAreaShape.id);
     this.lotAreaShape = null;

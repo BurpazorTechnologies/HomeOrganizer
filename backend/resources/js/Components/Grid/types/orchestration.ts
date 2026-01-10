@@ -51,6 +51,7 @@ export interface ManagerInstances {
   transformManager: any;
   labelManager: any;
   gridManager: any;
+  layerManager: any;
 }
 
 /**

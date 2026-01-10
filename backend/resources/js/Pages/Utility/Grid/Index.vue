@@ -74,6 +74,11 @@ const handleTogglePan = () => {
     isPanMode.value = !isPanMode.value;
 };
 
+// Recenter handler
+const handleRecenter = () => {
+    canvasRef.value?.recenterToLayer();
+};
+
 </script>
 
 <template>
@@ -92,6 +97,7 @@ const handleTogglePan = () => {
             @zoom-out="handleZoomOut"
             @reset-zoom="handleResetZoom"
             @toggle-pan="handleTogglePan"
+            @recenter="handleRecenter"
         />
 
         <!-- Debug Widget - Only shows in development mode -->

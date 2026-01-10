@@ -21,6 +21,7 @@ interface Emits {
   (e: 'zoom-out'): void;
   (e: 'reset-zoom'): void;
   (e: 'toggle-pan'): void;
+  (e: 'recenter'): void;
 }
 
 const props = defineProps<Props>();
@@ -167,6 +168,23 @@ const getZoomPercentage = () => {
             </svg>
           </button>
           <span class="text-[9px] text-gray-600">{{ isPanMode ? 'Pan Active' : 'Pan' }}</span>
+
+          <!-- Recenter Button -->
+          <button
+            @click="emit('recenter')"
+            class="ml-auto p-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors"
+            title="Recenter - Jump back to the main shape in current layer"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-3 w-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </button>
         </div>
         <div class="flex items-center gap-1.5">
           <!-- Zoom Out Button -->
