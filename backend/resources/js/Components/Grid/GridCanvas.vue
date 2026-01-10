@@ -264,7 +264,7 @@ function getCurrentZoom(): number {
  * Focus on the currently selected shape (centers it in viewport)
  */
 function focusOnSelectedShape(): void {
-    if (!shapeManager || !zoomManager || !stepOrchestrator) return;
+    if (!shapeManager || !zoomManager || !stepOrchestrator || !gridManager) return;
 
     // Get the selected shape ID from step orchestrator
     const stepInfo = stepOrchestrator.getCurrentStepInfo();
@@ -283,6 +283,9 @@ function focusOnSelectedShape(): void {
         width: shape.width,
         height: shape.height,
     });
+
+    // Redraw grid to account for the new stage position
+    gridManager.redrawGrid();
 }
 
 // Expose methods to parent component
