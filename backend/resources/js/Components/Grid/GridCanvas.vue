@@ -10,7 +10,12 @@ interface Props {
     scale: number;
 }
 
+interface Emits {
+    (e: 'click', position: { x: number; y: number }): void;
+}
+
 const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
 
 const containerRef = ref<HTMLDivElement | null>(null);
 
@@ -60,6 +65,28 @@ function initializeManagers(): void {
     });
 
     gridManager?.redrawGrid();
+
+    // Setup event handlers
+    setupEventHandlers();
+}
+
+/**
+ * Setup event handlers for the stage
+ */
+function setupEventHandlers(): void {
+    if (!stage) return;
+
+    // Click event - track click position
+    stage.on('click', (e) => {
+        const pointer = stage!.getPointerPosition();
+        if (pointer) {
+            // Emit the click position (world coordinates)
+            emit('click', {
+                x: pointer.x,
+                y: pointer.y
+            });
+        }
+    });
 }
 
 // ==================== Window Resize Handler ====================
