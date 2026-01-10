@@ -13,6 +13,7 @@ interface Props {
   canvasWidth?: number;
   canvasHeight?: number;
   currentZoom?: number;
+  selectedShapeId?: string | null;
 }
 
 const props = defineProps<Props>();
@@ -96,6 +97,17 @@ const getGridAreaDimensions = () => {
         <div class="flex items-center justify-between gap-3">
           <span class="text-[10px] text-gray-600">Grid Size:</span>
           <span class="text-[10px] font-mono font-semibold text-gray-900">{{ gridSize }}px</span>
+        </div>
+
+        <!-- Selected Shape ID -->
+        <div class="pt-1.5 border-t border-gray-100">
+          <div class="text-[10px] text-gray-500 mb-0.5">Selected Shape:</div>
+          <div v-if="selectedShapeId" class="text-[10px] font-mono font-semibold text-purple-600 break-all">
+            {{ selectedShapeId }}
+          </div>
+          <div v-else class="text-[10px] text-gray-400 italic">
+            No shape selected
+          </div>
         </div>
 
         <!-- Grid Area Dimensions -->

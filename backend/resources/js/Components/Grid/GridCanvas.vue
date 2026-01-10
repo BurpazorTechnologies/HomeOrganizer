@@ -249,6 +249,8 @@ function zoomOut(): boolean {
  */
 function resetZoom(): void {
     zoomManager?.resetZoom();
+    // Refocus on selected shape after reset
+    focusOnSelectedShape();
 }
 
 /**
@@ -258,18 +260,49 @@ function getCurrentZoom(): number {
     return zoomManager?.getCurrentZoom() || 1.0;
 }
 
+/**
+ * Focus on the currently selected shape (centers it in viewport)
+ */
+function focusOnSelectedShape(): void {
+    if (!shapeManager || !zoomManager || !stepOrchestrator) return;
+
+    // Get the selected shape ID from step orchestrator
+    const stepInfo = stepOrchestrator.getCurrentStepInfo();
+    const selectedShapeId = stepInfo.selectedShapeId;
+
+    if (!selectedShapeId) return;
+
+    // Get the shape data
+    const shape = shapeManager.getShape(selectedShapeId);
+    if (!shape) return;
+
+    // Focus on the shape
+    zoomManager.focusOnShape({
+        x: shape.x,
+        y: shape.y,
+        width: shape.width,
+        height: shape.height,
+    });
+}
+
 // Expose methods to parent component
 defineExpose({
     zoomIn,
     zoomOut,
     resetZoom,
     getCurrentZoom,
+    focusOnSelectedShape,
 });
 
 // ==================== Watch Pan Mode ====================
-watch(() => props.isPanMode, (newValue) => {
+watch(() => props.isPanMode, (newValue, oldValue) => {
     if (stage) {
         stage.draggable(newValue || false);
+    }
+
+    // When pan mode is disabled, refocus on selected shape
+    if (oldValue === true && newValue === false) {
+        focusOnSelectedShape();
     }
 });
 

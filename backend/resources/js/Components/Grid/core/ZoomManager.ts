@@ -130,4 +130,26 @@ export class ZoomManager {
   getZoomPercentage(): number {
     return Math.round(this.currentZoom * 100);
   }
+
+  /**
+   * Focus on a specific shape by centering it in the viewport
+   * @param shape - Shape with x, y, width, height properties
+   */
+  focusOnShape(shape: { x: number; y: number; width: number; height: number }): void {
+    // Calculate the center of the shape
+    const shapeCenterX = shape.x + shape.width / 2;
+    const shapeCenterY = shape.y + shape.height / 2;
+
+    // Calculate the center of the stage viewport
+    const stageCenterX = this.stage.width() / 2;
+    const stageCenterY = this.stage.height() / 2;
+
+    // Calculate the offset needed to center the shape
+    const offsetX = stageCenterX - shapeCenterX * this.currentZoom;
+    const offsetY = stageCenterY - shapeCenterY * this.currentZoom;
+
+    // Apply the position to stage
+    this.stage.position({ x: offsetX, y: offsetY });
+    this.stage.batchDraw();
+  }
 }

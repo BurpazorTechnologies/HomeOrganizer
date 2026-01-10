@@ -20,6 +20,7 @@ const lastClickPosition = ref<{ x: number; y: number } | null>(null);
 const currentStep = ref<Step>(DEFAULT_STEP);
 const stepDescription = ref<string>('');
 const stepActions = ref<ToolbarAction[]>([]);
+const selectedShapeId = ref<string | null>(null);
 
 // Zoom state
 const currentZoom = ref<number>(1.0);
@@ -41,6 +42,7 @@ const handleStepChange = (stepInfo: StepInfo) => {
     currentStep.value = stepInfo.step;
     stepDescription.value = stepInfo.description;
     stepActions.value = stepInfo.actions;
+    selectedShapeId.value = stepInfo.selectedShapeId || null;
 };
 
 // Handle zoom changes from canvas
@@ -99,6 +101,7 @@ const handleTogglePan = () => {
             :canvas-width="canvasWidth"
             :canvas-height="canvasHeight"
             :current-zoom="currentZoom"
+            :selected-shape-id="selectedShapeId"
         />
 
         <!-- Main Canvas -->
