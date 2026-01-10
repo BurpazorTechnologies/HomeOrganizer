@@ -1,14 +1,7 @@
-/**
- * Grid Manager
- *
- * Manages the grid rendering, including drawing lines and calculating visible bounds.
- * Responsible for the visual grid overlay on the canvas.
- */
 
 import Konva from 'konva';
-import type { VisibleBounds, GridConfig } from '../types/grid';
+import type { VisibleBounds, GridConfig } from '@/Components/Grid/types/grid';
 import { GRID_CONSTANTS } from '../types/constants';
-
 export class GridManager {
   private layer: Konva.Layer;
   private stage: Konva.Stage;
@@ -22,6 +15,12 @@ export class GridManager {
       snapEnabled: config?.snapEnabled ?? true,
       visible: config?.visible ?? true,
     };
+  }
+  /**
+   * Clear all grid lines from the layer
+   */
+  clearGrid(): void {
+    this.layer.destroyChildren();
   }
 
   /**
@@ -110,13 +109,7 @@ export class GridManager {
   }
 
   /**
-   * Clear all grid lines from the layer
-   */
-  clearGrid(): void {
-    this.layer.destroyChildren();
-  }
-
-  /**
+   * 
    * Redraw the entire grid
    *
    * This is the main method called when the grid needs to update
@@ -133,81 +126,12 @@ export class GridManager {
 
     // Calculate visible bounds
     const bounds = this.getVisibleBounds();
-
+    console.log(bounds);
     // Draw new grid lines
     this.drawVerticalLines(bounds);
     this.drawHorizontalLines(bounds);
 
     // Batch draw for performance
     this.layer.batchDraw();
-  }
-
-  /**
-   * Update grid configuration
-   *
-   * @param config - Partial configuration to update
-   */
-  updateConfig(config: Partial<GridConfig>): void {
-    this.config = {
-      ...this.config,
-      ...config,
-    };
-    this.redrawGrid();
-  }
-
-  /**
-   * Get current grid configuration
-   */
-  getConfig(): GridConfig {
-    return { ...this.config };
-  }
-
-  /**
-   * Snap a value to the grid
-   *
-   * @param value - The value to snap
-   * @returns Snapped value (or original if snap is disabled)
-   */
-  snapValue(value: number): number {
-    if (!this.config.snapEnabled) {
-      return value;
-    }
-    return Math.round(value / this.config.size) * this.config.size;
-  }
-
-  /**
-   * Snap a point to the grid
-   *
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @returns Snapped coordinates
-   */
-  snapPoint(x: number, y: number): { x: number; y: number } {
-    return {
-      x: this.snapValue(x),
-      y: this.snapValue(y),
-    };
-  }
-
-  /**
-   * Toggle grid visibility
-   */
-  toggleVisibility(): void {
-    this.config.visible = !this.config.visible;
-    this.redrawGrid();
-  }
-
-  /**
-   * Toggle snap to grid
-   */
-  toggleSnap(): void {
-    this.config.snapEnabled = !this.config.snapEnabled;
-  }
-
-  /**
-   * Check if snap is enabled
-   */
-  isSnapEnabled(): boolean {
-    return this.config.snapEnabled;
   }
 }

@@ -4,7 +4,6 @@
  * Centralized configuration for the entire grid system.
  * Modify these values to change grid behavior globally.
  */
-
 export const GRID_CONSTANTS = {
   // Grid visual settings
   DEFAULT_GRID_SIZE: 20,        // pixels between grid lines
@@ -43,7 +42,6 @@ export const GRID_CONSTANTS = {
  */
 export const SHAPE_TYPES = {
   RECTANGLE: 'rectangle',
-  // Future expansion:
   // CIRCLE: 'circle',
   // POLYGON: 'polygon',
   // CUSTOM: 'custom',
