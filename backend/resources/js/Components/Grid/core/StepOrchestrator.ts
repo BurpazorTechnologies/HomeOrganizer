@@ -233,10 +233,29 @@ export class StepOrchestrator {
       return false;
     }
 
-    // First, load the home area (Step 1)
+    // Load saved data to check if there's anything to restore
+    const savedData = await pm.getCurrentData();
+    if (!savedData) {
+      console.log('StepOrchestrator: No saved state to restore');
+      return false;
+    }
+
+    // CRITICAL: Restore area hierarchy FIRST before loading shapes
+    // This ensures that when shapes are loaded with preserved IDs,
+    // the area-to-shape mappings are already valid
+    if (savedData.areaHierarchy && savedData.areaHierarchy.rootAreaId) {
+      console.log('StepOrchestrator: Restoring area hierarchy...');
+      this.managers.areaManager.deserialize(
+        savedData.areaHierarchy,
+        this.managers.shapeManager
+      );
+      console.log('StepOrchestrator: Area hierarchy restored', savedData.areaHierarchy);
+    }
+
+    // Now load the home area shapes (Step 1)
     const homeLoaded = await this.loadHomeArea();
     if (!homeLoaded) {
-      console.log('StepOrchestrator: No saved state to restore');
+      console.log('StepOrchestrator: No saved home area to restore');
       return false;
     }
 

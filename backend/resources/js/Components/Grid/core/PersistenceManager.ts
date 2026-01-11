@@ -263,8 +263,10 @@ export class PersistenceManager {
         shapeData.x,
         shapeData.y,
         {
+          id: shapeData.id, // PRESERVE original ID for referential integrity
           fill: shapeData.fill,
           stroke: shapeData.stroke,
+          strokeWidth: shapeData.strokeWidth,
           label: shapeData.label,
           width: shapeData.width,
           height: shapeData.height,
@@ -331,8 +333,10 @@ export class PersistenceManager {
         shapeData.x,
         shapeData.y,
         {
+          id: shapeData.id, // PRESERVE original ID for referential integrity
           fill: shapeData.fill,
           stroke: shapeData.stroke,
+          strokeWidth: shapeData.strokeWidth,
           label: shapeData.label,
           width: shapeData.width,
           height: shapeData.height,
@@ -344,16 +348,18 @@ export class PersistenceManager {
       // Add to layer
       this.managers.layerManager.addShapeToLayer(layerId, shape.id, isPrimary);
 
-      // Create child area in AreaManager
+      // Create child area in AreaManager (only if not already restored from hierarchy)
       const childAreaId = `area_${shape.id}`;
-      this.managers.areaManager.createChildArea(
-        childAreaId,
-        'area',
-        shape.id,
-        layerId,
-        parentAreaId,
-        shapeData.label
-      );
+      if (!this.managers.areaManager.getArea(childAreaId)) {
+        this.managers.areaManager.createChildArea(
+          childAreaId,
+          'area',
+          shape.id,
+          layerId,
+          parentAreaId,
+          shapeData.label
+        );
+      }
 
       // Create label - if shape has a saved label, use area name label; otherwise dimension label
       if (shapeData.label && shapeData.label.trim()) {
@@ -452,7 +458,9 @@ export class PersistenceManager {
         height: shape.height,
         fill: shape.fill,
         stroke: shape.stroke,
+        strokeWidth: shape.strokeWidth,
         label: shape.label || '',
+        zIndex: shape.zIndex,
       };
     }).filter(Boolean) as ShapeData[];
   }

@@ -44,15 +44,20 @@ export class ShapeManager {
 
     /**
      * Create a new rectangle shape at the specified position
+     * @param x - X coordinate
+     * @param y - Y coordinate
+     * @param options - Optional configuration including id for restoration from saved data
      */
     createRectangle(
         x: number,
         y: number,
         options?: {
+            id?: string; // Optional ID for restoring saved shapes (preserves references)
             width?: number;
             height?: number;
             fill?: string;
             stroke?: string;
+            strokeWidth?: number;
             label?: string;
             layerId?: string;
             parentBounds?: {
@@ -63,7 +68,8 @@ export class ShapeManager {
             };
         }
     ): RectangleShape {
-        const id = `shape_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        // Use provided ID (for restoration) or generate new one
+        const id = options?.id || `shape_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
         // Snap position to grid if enabled
         const snappedX = this.snapEnabled ? Math.round(x / this.gridSize) * this.gridSize : x;
@@ -78,7 +84,7 @@ export class ShapeManager {
             height: options?.height || GRID_CONSTANTS.DEFAULT_SHAPE_HEIGHT,
             fill: options?.fill || SHAPE_COLORS.HOME_AREA_FILL,
             stroke: options?.stroke || SHAPE_COLORS.HOME_AREA_STROKE,
-            strokeWidth: GRID_CONSTANTS.SHAPE_STROKE_WIDTH,
+            strokeWidth: options?.strokeWidth || GRID_CONSTANTS.SHAPE_STROKE_WIDTH,
             label: options?.label || '',
             zIndex: this.shapes.size,
         };

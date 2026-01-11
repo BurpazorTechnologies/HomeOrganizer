@@ -101,11 +101,17 @@ export class LabelManager {
             label.text(areaName);
             label.fontSize(16);
             label.fontStyle('bold');
+            label.fill('#1f2937');
         }
 
-        // Position label at center of shape
-        const labelX = dimensions.x + dimensions.width / 2 - label.width() / 2;
-        const labelY = dimensions.y + dimensions.height / 2 - label.height() / 2;
+        // Draw first to ensure text is measured
+        this.layer.batchDraw();
+
+        // Position label at center of shape (after text measurement)
+        const labelWidth = label.width();
+        const labelHeight = label.height();
+        const labelX = dimensions.x + dimensions.width / 2 - labelWidth / 2;
+        const labelY = dimensions.y + dimensions.height / 2 - labelHeight / 2;
 
         label.position({ x: labelX, y: labelY });
         this.labelTypes.set(shapeId, 'areaName');
@@ -120,6 +126,7 @@ export class LabelManager {
         if (label) {
             label.destroy();
             this.labels.delete(shapeId);
+            this.labelTypes.delete(shapeId);
             this.layer.batchDraw();
         }
     }
@@ -137,6 +144,7 @@ export class LabelManager {
     clearAll(): void {
         this.labels.forEach(label => label.destroy());
         this.labels.clear();
+        this.labelTypes.clear();
         this.layer.batchDraw();
     }
 

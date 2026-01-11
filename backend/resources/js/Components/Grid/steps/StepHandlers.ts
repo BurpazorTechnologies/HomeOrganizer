@@ -25,20 +25,10 @@ export class StepHandlers {
   ): void {
     // Clicked on canvas
     if (context.target === 'canvas') {
-      // Check if we need explicit creation mode
-      const needsExplicitCreate = config.rules.requiresExplicitCreate && state.shapeIds.length > 0;
-
-      // If explicit create is needed but we're not in creation mode
-      if (needsExplicitCreate && !state.isCreationMode) {
-        // Select parent shape instead (if in Step 2)
-        if (config.parentContext) {
-          this.selectParent(state, managers);
-        } else {
-          // Deselect shapes
-          managers.shapeManager.deselectShape();
-          managers.transformManager.detach();
-          state.selectedShapeId = null;
-        }
+      // In Step 2+, if requiresExplicitCreate is set and we're NOT in creation mode,
+      // clicking canvas should select parent (regardless of how many child shapes exist)
+      if (config.rules.requiresExplicitCreate && !state.isCreationMode && config.parentContext) {
+        this.selectParent(state, managers);
         return;
       }
 
@@ -47,7 +37,8 @@ export class StepHandlers {
         // If we have parent context, validate click is within parent bounds
         if (config.parentContext) {
           if (!this.isPositionWithinBounds(context.position, config.parentContext.parentBounds)) {
-            console.log('Click outside parent bounds - ignoring');
+            // Click outside parent bounds - select parent instead of ignoring
+            this.selectParent(state, managers);
             return;
           }
         }
@@ -80,15 +71,25 @@ export class StepHandlers {
     state: StepState,
     managers: ManagerInstances
   ): void {
-    if (!state.parentShapeId) return;
+    if (!state.parentShapeId) {
+      console.log('selectParent: No parent shape ID in state');
+      return;
+    }
 
     const parentNode = managers.shapeManager.getShapeNode(state.parentShapeId);
-    if (!parentNode) return;
+    if (!parentNode) {
+      console.log('selectParent: Parent node not found for ID:', state.parentShapeId);
+      return;
+    }
+
+    // Deselect any currently selected child shape and detach transformer
+    managers.shapeManager.deselectShape();
+    managers.transformManager.detach();
 
     // Visual feedback: add a subtle highlight stroke to parent
     parentNode.strokeWidth(4);
     parentNode.dash([10, 5]);
-    managers.shapeManager.getShapeNode(state.parentShapeId)?.getLayer()?.batchDraw();
+    parentNode.getLayer()?.batchDraw();
 
     // Set parent as "selected" in state
     state.selectedShapeId = state.parentShapeId;
@@ -237,6 +238,16 @@ export class StepHandlers {
     state: StepState,
     managers: ManagerInstances
   ): void {
+    // If we were previously selecting the parent, reset its visual state
+    if (state.parentShapeId && state.selectedShapeId === state.parentShapeId) {
+      const parentNode = managers.shapeManager.getShapeNode(state.parentShapeId);
+      if (parentNode) {
+        parentNode.strokeWidth(2); // Reset to default
+        parentNode.dash([]); // Remove dashed line
+        parentNode.getLayer()?.batchDraw();
+      }
+    }
+
     state.selectedShapeId = shapeId;
     managers.shapeManager.selectShape(shapeId);
     const node = managers.shapeManager.getShapeNode(shapeId);
@@ -421,10 +432,16 @@ export class StepHandlers {
         if (isPrimary) {
           state.primaryShapeId = shape.id;
 
-          // Create the HOME AREA (root) in AreaManager for the primary shape
+          // Only create HOME AREA if not already restored from hierarchy
+          // (AreaManager.deserialize() is called first in restoreState)
           const homeAreaId = 'home_area_root';
-          managers.areaManager.createHomeArea(homeAreaId, shape.id, config.layerId);
-          console.log(`Loaded HOME AREA (root) with ID: ${homeAreaId}, shapeId: ${shape.id}`);
+          const existingArea = managers.areaManager.getArea(homeAreaId);
+          if (!existingArea) {
+            managers.areaManager.createHomeArea(homeAreaId, shape.id, config.layerId);
+            console.log(`Created HOME AREA (root) with ID: ${homeAreaId}, shapeId: ${shape.id}`);
+          } else {
+            console.log(`HOME AREA already exists from deserialization, shapeId: ${shape.id}`);
+          }
         }
       }
     );
@@ -534,8 +551,9 @@ export class StepHandlers {
     // Update the shape's label property
     shape.label = label;
 
-    // Update the visual label on canvas (centered on shape)
+    // Update the visual label on canvas
     if (label.trim()) {
+      // Show area name label (centered on shape)
       managers.labelManager.updateAreaNameLabel(shapeId, label, {
         x: shape.x,
         y: shape.y,
@@ -543,7 +561,8 @@ export class StepHandlers {
         height: shape.height,
       });
     } else {
-      // If empty, show dimensions instead
+      // If empty, remove existing label and show dimensions instead
+      managers.labelManager.removeLabel(shapeId);
       managers.labelManager.updateLabel(shapeId, {
         x: shape.x,
         y: shape.y,

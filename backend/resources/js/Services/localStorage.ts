@@ -16,7 +16,9 @@ export interface ShapeData {
   height: number;
   fill: string;
   stroke: string;
+  strokeWidth?: number; // Optional for backwards compatibility
   label: string;
+  zIndex?: number; // Optional for backwards compatibility
 }
 
 export interface ChildAreaData {
