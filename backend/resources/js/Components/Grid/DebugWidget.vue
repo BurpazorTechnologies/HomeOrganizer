@@ -14,6 +14,7 @@ interface Props {
   canvasHeight?: number;
   currentZoom?: number;
   selectedShapeId?: string | null;
+  layers?: any[];
 }
 
 const props = defineProps<Props>();
@@ -24,11 +25,21 @@ const isDev = import.meta.env.DEV;
 // Collapse state
 const isCollapsed = ref(false);
 
+// Layer child node collapse state - track which layers have collapsed children
+const layerChildrenCollapsed = ref<Record<string, boolean>>({});
+
 /**
  * Toggle collapse state
  */
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value;
+};
+
+/**
+ * Toggle layer children collapse state
+ */
+const toggleLayerChildren = (layerId: string) => {
+  layerChildrenCollapsed.value[layerId] = !layerChildrenCollapsed.value[layerId];
 };
 
 // Calculate grid coordinates from pixel position
@@ -127,6 +138,55 @@ const getGridAreaDimensions = () => {
                 {{ getGridAreaDimensions()?.squaresY }} squares
                 <span class="text-gray-400">({{ getGridAreaDimensions()?.pixelsY }}px)</span>
               </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layers -->
+        <div v-if="layers && layers.length > 0" class="pt-1.5 border-t border-gray-100">
+          <div class="text-[10px] text-gray-500 mb-0.5">Layers:</div>
+          <div class="space-y-1">
+            <div v-for="layer in layers" :key="layer.id" class="text-[10px]">
+              <!-- Layer header (always visible) -->
+              <div class="font-semibold text-orange-600">
+                Layer {{ layer.order }}: {{ layer.label }}
+              </div>
+
+              <!-- Child nodes (collapsible) -->
+              <div v-if="layer.shapeIds && layer.shapeIds.length > 0" class="ml-2 mt-0.5">
+                <button
+                  @click="toggleLayerChildren(layer.id)"
+                  class="text-[9px] text-gray-500 hover:text-gray-700 flex items-center gap-0.5"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-2 w-2 transition-transform"
+                    :class="{ 'rotate-90': !layerChildrenCollapsed[layer.id] }"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  {{ layer.shapeIds.length }} shape{{ layer.shapeIds.length > 1 ? 's' : '' }}
+                </button>
+
+                <!-- Shape list -->
+                <div v-show="!layerChildrenCollapsed[layer.id]" class="ml-3 mt-0.5 space-y-0.5">
+                  <div
+                    v-for="(shapeId, index) in layer.shapeIds"
+                    :key="shapeId"
+                    class="text-[9px] font-mono"
+                    :class="shapeId === layer.primaryShapeId ? 'text-blue-600 font-semibold' : 'text-gray-600'"
+                  >
+                    <span class="text-gray-400">→</span>
+                    {{ shapeId === layer.primaryShapeId ? '★ ' : '' }}{{ shapeId }}
+                  </div>
+                </div>
+              </div>
+              <div v-else class="ml-2 text-[9px] text-gray-400 italic">
+                No shapes
+              </div>
             </div>
           </div>
         </div>

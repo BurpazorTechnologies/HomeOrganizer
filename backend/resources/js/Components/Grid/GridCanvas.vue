@@ -24,6 +24,7 @@ interface Emits {
     (e: 'zoomChange', zoom: number): void;
     (e: 'resize', width: number, height: number): void;
     (e: 'update:isPanMode', value: boolean): void;
+    (e: 'layerChange', layers: any[]): void;
 }
 
 const props = defineProps<Props>();
@@ -164,6 +165,17 @@ function emitStepChange(): void {
     if (!stepOrchestrator) return;
     const stepInfo = stepOrchestrator.getCurrentStepInfo();
     emit('stepChange', stepInfo);
+    // Also emit layer info when step changes
+    emitLayerChange();
+}
+
+/**
+ * Emit layer information to parent
+ */
+function emitLayerChange(): void {
+    if (!layerManager) return;
+    const layers = layerManager.getAllLayers();
+    emit('layerChange', layers);
 }
 
 /**

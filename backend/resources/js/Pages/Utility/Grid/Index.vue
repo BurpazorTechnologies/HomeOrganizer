@@ -32,9 +32,17 @@ const canvasHeight = ref<number>(0);
 // Pan mode state
 const isPanMode = ref<boolean>(false);
 
+// Layer state
+const layers = ref<any[]>([]);
+
 // Handle canvas click
 const handleCanvasClick = (position: { x: number; y: number }) => {
     lastClickPosition.value = position;
+};
+
+// Handle layer changes from canvas
+const handleLayerChange = (layersData: any[]) => {
+    layers.value = layersData;
 };
 
 // Handle step changes from canvas
@@ -108,6 +116,7 @@ const handleRecenter = () => {
             :canvas-height="canvasHeight"
             :current-zoom="currentZoom"
             :selected-shape-id="selectedShapeId"
+            :layers="layers"
         />
 
         <!-- Main Canvas -->
@@ -121,6 +130,7 @@ const handleRecenter = () => {
             @step-change="handleStepChange"
             @zoom-change="handleZoomChange"
             @resize="handleCanvasResize"
+            @layer-change="handleLayerChange"
         />
     </div>
 </template>

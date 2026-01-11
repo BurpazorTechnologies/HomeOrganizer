@@ -2,36 +2,106 @@
  * StepOrchestrator
  *
  * Central coordinator for step-based behavior.
- * Manages step transitions and delegates events to the current step.
+ * Uses declarative configuration instead of step classes.
  */
 
 import type Konva from 'konva';
-import type { BaseStep } from '@/Components/Grid/steps/BaseStep';
-import type { ClickContext, ClickTarget, StepInfo, ManagerInstances } from '@/Components/Grid/types/orchestration';
-import { Step1LotArea } from '@/Components/Grid/steps/Step1LotArea';
+import type {
+  ClickContext,
+  ClickTarget,
+  StepInfo,
+  ManagerInstances,
+  StepConfiguration,
+  StepState,
+} from '@/Components/Grid/types/orchestration';
+import { STEPS } from '@/Components/Grid/types/steps';
+import { SHAPE_COLORS } from '@/Components/Grid/types/constants';
+import { StepHandlers } from '@/Components/Grid/steps/StepHandlers';
 
 export class StepOrchestrator {
-  private currentStep: BaseStep;
-  private stepHistory: BaseStep[] = [];
+  private stepConfigs: Map<number, StepConfiguration> = new Map();
+  private currentStepConfig: StepConfiguration;
+  private currentState: StepState;
   private managers: ManagerInstances;
   private onStepChangeCallback?: (stepInfo: StepInfo) => void;
 
   constructor(managers: ManagerInstances) {
     this.managers = managers;
 
-    // Initialize with Step 1
-    this.currentStep = new Step1LotArea(managers);
-    this.currentStep.onEnter();
+    // Configure all steps (declarative!)
+    this.configureSteps();
+
+    // Start with Step 1
+    this.currentStepConfig = this.stepConfigs.get(1)!;
+    this.currentState = {
+      shapeIds: [],
+      selectedShapeId: null,
+      primaryShapeId: null,
+    };
+
+    this.enterStep(this.currentStepConfig);
   }
 
   /**
-   * Handle click events - delegate to current step
+   * Centralized step configuration
+   */
+  private configureSteps(): void {
+    // Step 1: Home Area
+    this.stepConfigs.set(1, {
+      step: STEPS.HOME_AREA,
+      layerId: 'layer_1',
+      shapeType: 'rectangle',
+      shapeDefaults: {
+        label: 'Home Area',
+        fill: SHAPE_COLORS.HOME_AREA_FILL,
+        stroke: SHAPE_COLORS.HOME_AREA_STROKE,
+      },
+      rules: {
+        maxShapes: 1,              // Only ONE home area
+        requiresSelection: false,
+        canDelete: true,
+      },
+    });
+
+    // Future: Step 2, 3, etc. will be added here or dynamically
+  }
+
+  /**
+   * Enter a step - orchestrator controls layer creation
+   */
+  private enterStep(config: StepConfiguration): void {
+    // Create layer for this step
+    this.managers.layerManager.createLayer(config.step);
+
+    // Emit to UI
+    this.notifyStepChange();
+  }
+
+  /**
+   * Exit a step - orchestrator controls cleanup
+   */
+  private exitStep(config: StepConfiguration): void {
+    // Deselect shapes
+    this.managers.shapeManager.deselectShape();
+    this.managers.transformManager.detach();
+
+    // Could archive or hide layer here if needed
+  }
+
+  /**
+   * Handle click events - delegate to handler with config + state
    */
   handleClick(event: Konva.KonvaEventObject<MouseEvent>, stage: Konva.Stage): void {
     const context = this.buildClickContext(event, stage);
-    this.currentStep.handleClick(context);
 
-    // Notify listeners that step state may have changed
+    // Delegate to step handler with configuration
+    StepHandlers.handleClick(
+      context,
+      this.currentStepConfig,
+      this.currentState,
+      this.managers
+    );
+
     this.notifyStepChange();
   }
 
@@ -64,28 +134,58 @@ export class StepOrchestrator {
   }
 
   /**
-   * Transition to a new step
+   * Delete shape - orchestrator manages state
    */
-  transitionToStep(nextStep: BaseStep): void {
-    // Exit current step
-    this.currentStep.onExit();
+  private deleteShape(shapeId: string): void {
+    StepHandlers.deleteShape(
+      shapeId,
+      this.currentStepConfig,
+      this.currentState,
+      this.managers
+    );
 
-    // Store in history
-    this.stepHistory.push(this.currentStep);
-
-    // Enter new step
-    this.currentStep = nextStep;
-    this.currentStep.onEnter();
-
-    // Notify listeners
     this.notifyStepChange();
+  }
+
+  /**
+   * Transition to next step (future)
+   */
+  transitionToNextStep(): void {
+    const nextOrder = this.currentStepConfig.step.order + 1;
+    const nextConfig = this.stepConfigs.get(nextOrder);
+
+    if (nextConfig) {
+      this.exitStep(this.currentStepConfig);
+      this.currentStepConfig = nextConfig;
+      this.currentState = {
+        shapeIds: [],
+        selectedShapeId: null,
+        primaryShapeId: null,
+      };
+      this.enterStep(this.currentStepConfig);
+    }
   }
 
   /**
    * Get current step information for UI
    */
   getCurrentStepInfo(): StepInfo {
-    return this.currentStep.getStepInfo();
+    return {
+      step: this.currentStepConfig.step,
+      description: StepHandlers.getDescription(
+        this.currentStepConfig,
+        this.currentState
+      ),
+      actions: StepHandlers.getToolbarActions(
+        this.currentStepConfig,
+        this.currentState,
+        {
+          onDelete: (shapeId) => this.deleteShape(shapeId),
+          onNextStep: () => this.transitionToNextStep(),
+        }
+      ),
+      selectedShapeId: this.currentState.selectedShapeId,
+    };
   }
 
   /**
@@ -102,29 +202,5 @@ export class StepOrchestrator {
     if (this.onStepChangeCallback) {
       this.onStepChangeCallback(this.getCurrentStepInfo());
     }
-  }
-
-  /**
-   * Get current step instance
-   */
-  getCurrentStep(): BaseStep {
-    return this.currentStep;
-  }
-
-  /**
-   * Go back to previous step (if exists)
-   */
-  goToPreviousStep(): boolean {
-    if (this.stepHistory.length === 0) {
-      return false;
-    }
-
-    const previousStep = this.stepHistory.pop()!;
-    this.currentStep.onExit();
-    this.currentStep = previousStep;
-    this.currentStep.onEnter();
-    this.notifyStepChange();
-
-    return true;
   }
 }

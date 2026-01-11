@@ -55,7 +55,38 @@ export interface ManagerInstances {
 }
 
 /**
+ * Step Configuration - declarative definition of what each step does
+ */
+export interface StepConfiguration {
+  step: Step;                          // Step metadata (order, label, etc.)
+  layerId: string;                     // Which layer to use
+  shapeType: 'rectangle' | 'circle';   // What shapes can be created
+  shapeDefaults: {                     // Default shape properties
+    label: string;
+    fill?: string;
+    stroke?: string;
+    width?: number;
+    height?: number;
+  };
+  rules: {
+    maxShapes: number;                 // How many shapes allowed (1 for home, Infinity for rooms)
+    requiresSelection: boolean;        // Must select before creating more?
+    canDelete: boolean;                // Can delete shapes?
+  };
+}
+
+/**
+ * Step Runtime State - tracks current state during execution
+ */
+export interface StepState {
+  shapeIds: string[];                  // All shapes in this step
+  selectedShapeId: string | null;      // Currently selected shape
+  primaryShapeId: string | null;       // Main shape (for recentering)
+}
+
+/**
  * Step behavior interface - what each step must implement
+ * @deprecated Use StepConfiguration and StepHandlers instead
  */
 export interface StepBehavior {
   /**

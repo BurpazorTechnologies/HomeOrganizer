@@ -4,7 +4,7 @@
  * Centralized configuration for grid editor steps.
  * Defines the workflow and step labels used throughout the application.
  *
- * Future features will dynamically create steps (e.g., "Creating Floor 2 Area", "Creating Room 3")
+ * Future features will dynamically create steps (e.g., "Creating Area 2", "Creating Room 3")
  * based on user actions, rather than hardcoding them here.
  */
 
@@ -13,8 +13,8 @@
  */
 export interface Step {
   id: string;           // Unique identifier for the step
-  order: number;        // Step order/sequence (1 = lot, 2 = floors, 3 = rooms, etc.)
-  label: string;        // Display label for the step (e.g., "Creating Lot Area", "Creating Floor 2 Area")
+  order: number;        // Step order/sequence (1 = home, 2 = areas, 3 = rooms, etc.)
+  label: string;        // Display label for the step (e.g., "Creating Home Area", "Creating Area")
   description?: string; // Optional description of what this step does
   color?: {            // Optional color configuration for this step
     fill: string;
@@ -23,22 +23,21 @@ export interface Step {
 }
 
 /**
- * Step type categories
+ * Step type categories - aligned with Area types
  * Used to create new steps dynamically in the future
  */
 export const STEP_TYPES = {
-  LOT: {
+  HOME_AREA: {
     order: 1,
-    labelPrefix: 'Creating Lot Area',
+    labelPrefix: 'Creating Home Area',
     defaultColor: {
       fill: '#d1fae5',  // light green
       stroke: '#059669', // green
     },
   },
-  FLOOR: {
+  AREA: {
     order: 2,
-    labelPrefix: 'Creating Floor',
-    labelSuffix: 'Area',
+    labelPrefix: 'Creating Area',
     defaultColor: {
       fill: '#dbeafe',  // light blue
       stroke: '#2563eb', // blue
@@ -58,18 +57,18 @@ export const STEP_TYPES = {
  * Currently active steps
  */
 export const STEPS: Record<string, Step> = {
-  LOT_AREA: {
-    id: 'lot_area',
-    order: STEP_TYPES.LOT.order,
-    label: STEP_TYPES.LOT.labelPrefix,
-    description: 'Define the overall lot/property boundary',
-    color: STEP_TYPES.LOT.defaultColor,
+  HOME_AREA: {
+    id: 'home_area',
+    order: STEP_TYPES.HOME_AREA.order,
+    label: STEP_TYPES.HOME_AREA.labelPrefix,
+    description: 'Define the home boundary',
+    color: STEP_TYPES.HOME_AREA.defaultColor,
   },
 } as const;
 
 /**
  * Helper function to create a dynamic step (for future use)
- * Example: createStep('FLOOR', 2) -> "Creating Floor 2 Area"
+ * Example: createStep('AREA', 2) -> "Creating Area 2"
  * Example: createStep('ROOM', 3) -> "Creating Room 3"
  */
 export function createStep(
@@ -123,4 +122,4 @@ export function getStepsByOrder(order: number): Step[] {
 /**
  * Default step (used when starting a new project)
  */
-export const DEFAULT_STEP = STEPS.LOT_AREA;
+export const DEFAULT_STEP = STEPS.HOME_AREA;
