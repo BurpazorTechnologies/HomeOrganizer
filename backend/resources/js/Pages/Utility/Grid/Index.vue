@@ -2,7 +2,6 @@
 import { ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import GridCanvas from '@/Components/Grid/GridCanvas.vue';
-import DebugWidget from '@/Components/Grid/DebugWidget.vue';
 import Toolbar from '@/Components/Grid/Toolbar.vue';
 import { GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 import { DEFAULT_STEP, type Step } from '@/Components/Grid/types/steps';
@@ -139,19 +138,6 @@ const handleRecenter = () => {
             @save-shape-label="handleSaveShapeLabel"
         />
 
-        <!-- Debug Widget - Only shows in development mode -->
-        <DebugWidget
-            :grid-size="gridSize"
-            :last-click-position="lastClickPosition"
-            :canvas-width="canvasWidth"
-            :canvas-height="canvasHeight"
-            :current-zoom="currentZoom"
-            :selected-shape-id="selectedShapeId"
-            :layers="layers"
-            :saved-data="savedData"
-            :current-step="currentStep.order"
-            :parent-area-id="parentAreaId"
-        />
 
         <!-- Main Canvas -->
         <GridCanvas
