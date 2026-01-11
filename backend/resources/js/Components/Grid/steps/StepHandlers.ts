@@ -12,6 +12,7 @@ import type {
   ToolbarAction,
   ManagerInstances,
 } from '@/Components/Grid/types/orchestration';
+import { localStorageService } from '@/Services/localStorage';
 
 export class StepHandlers {
   /**
@@ -140,11 +141,129 @@ export class StepHandlers {
       return `Click anywhere on the grid to create your ${config.shapeDefaults.label.toLowerCase()}`;
     }
 
-    if (state.selectedShapeId) {
-      return `${config.shapeDefaults.label} selected. Resize by dragging edges, or use toolbar actions`;
+    if (state.isSaved) {
+      if (state.selectedShapeId) {
+        return `${config.shapeDefaults.label} saved. You can now create areas within this space`;
+      }
+      return `${config.shapeDefaults.label} saved. Click it to select`;
     }
 
-    return `${config.shapeDefaults.label} created. Click it to select and see options`;
+    if (state.selectedShapeId) {
+      return `${config.shapeDefaults.label} selected. Resize by dragging edges, then save`;
+    }
+
+    return `${config.shapeDefaults.label} created. Click it to select and save`;
+  }
+
+  /**
+   * Save the current step (persist to localStorage)
+   */
+  static saveStep(
+    config: StepConfiguration,
+    state: StepState,
+    managers: ManagerInstances
+  ): void {
+    // If no shapes, save null to clear localStorage
+    if (state.shapeIds.length === 0) {
+      localStorageService.saveHomeArea(null as any);
+      state.isSaved = true;
+      console.log('Saved empty state to localStorage (cleared)');
+      return;
+    }
+
+    // Prepare data to save
+    const homeAreaData = {
+      stepId: config.step.id,
+      layerId: config.layerId,
+      shapes: state.shapeIds.map(id => {
+        const shape = managers.shapeManager.getShape(id);
+        return {
+          id: shape.id,
+          type: shape.type,
+          x: shape.x,
+          y: shape.y,
+          width: shape.width,
+          height: shape.height,
+          fill: shape.fill,
+          stroke: shape.stroke,
+          label: shape.label,
+        };
+      }),
+      primaryShapeId: state.primaryShapeId,
+    };
+
+    // Save to localStorage
+    localStorageService.saveHomeArea(homeAreaData);
+
+    // Mark as saved
+    state.isSaved = true;
+
+    console.log('Saved to localStorage:', homeAreaData);
+  }
+
+  /**
+   * Load saved home area from localStorage
+   */
+  static loadHomeArea(
+    config: StepConfiguration,
+    state: StepState,
+    managers: ManagerInstances
+  ): boolean {
+    const savedData = localStorageService.getHomeArea();
+
+    if (!savedData || !savedData.shapes || savedData.shapes.length === 0) {
+      console.log('No saved home area found');
+      return false;
+    }
+
+    // Clear existing shapes
+    state.shapeIds.forEach(id => {
+      this.deleteShape(id, config, state, managers);
+    });
+
+    // Recreate shapes from saved data
+    savedData.shapes.forEach((shapeData, index) => {
+      const shape = managers.shapeManager.createRectangle(
+        shapeData.x,
+        shapeData.y,
+        {
+          fill: shapeData.fill,
+          stroke: shapeData.stroke,
+          label: shapeData.label,
+          width: shapeData.width,
+          height: shapeData.height,
+        }
+      );
+
+      // Update state
+      state.shapeIds.push(shape.id);
+
+      // Add to layer
+      const isPrimary = shapeData.id === savedData.primaryShapeId || index === 0;
+      if (isPrimary) {
+        state.primaryShapeId = shape.id;
+      }
+
+      managers.layerManager.addShapeToLayer(
+        config.layerId,
+        shape.id,
+        isPrimary
+      );
+
+      // Create label
+      managers.labelManager.updateLabel(shape.id, {
+        x: shape.x,
+        y: shape.y,
+        width: shape.width,
+        height: shape.height,
+      });
+    });
+
+    // Mark as saved
+    state.isSaved = true;
+
+    console.log('Loaded home area from localStorage:', savedData);
+    return true;
   }
 
   /**
@@ -155,17 +274,14 @@ export class StepHandlers {
     state: StepState,
     callbacks: {
       onDelete: (shapeId: string) => void;
+      onSave: () => void;
       onNextStep: () => void;
     }
   ): ToolbarAction[] {
-    if (!state.selectedShapeId) {
-      return [];
-    }
-
     const actions: ToolbarAction[] = [];
 
-    // Delete action (if allowed)
-    if (config.rules.canDelete) {
+    // Delete action (if allowed and shape is selected)
+    if (config.rules.canDelete && state.selectedShapeId) {
       actions.push({
         id: 'delete',
         label: 'Delete',
@@ -174,8 +290,16 @@ export class StepHandlers {
       });
     }
 
-    // Next step action (if primary shape exists)
-    if (state.primaryShapeId) {
+    // Save action - ALWAYS available so users can save current state anytime
+    actions.push({
+      id: 'save',
+      label: 'Save',
+      variant: 'primary',
+      action: () => callbacks.onSave(),
+    });
+
+    // Next step action (if saved and has primary shape)
+    if (state.primaryShapeId && state.isSaved) {
       actions.push({
         id: 'next_step',
         label: 'Create Area',

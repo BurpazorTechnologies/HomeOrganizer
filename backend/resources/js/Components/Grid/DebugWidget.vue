@@ -5,7 +5,8 @@
  * Shows grid system information for debugging during development.
  * This component only renders when running in dev mode (npm run dev).
  */
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { localStorageService } from '@/Services/localStorage';
 
 interface Props {
   gridSize: number;
@@ -15,6 +16,7 @@ interface Props {
   currentZoom?: number;
   selectedShapeId?: string | null;
   layers?: any[];
+  savedData?: any; // Saved data from localStorage
 }
 
 const props = defineProps<Props>();
@@ -28,6 +30,9 @@ const isCollapsed = ref(false);
 // Layer child node collapse state - track which layers have collapsed children
 const layerChildrenCollapsed = ref<Record<string, boolean>>({});
 
+// Saved data collapse state
+const savedDataCollapsed = ref(false);
+
 /**
  * Toggle collapse state
  */
@@ -40,6 +45,21 @@ const toggleCollapse = () => {
  */
 const toggleLayerChildren = (layerId: string) => {
   layerChildrenCollapsed.value[layerId] = !layerChildrenCollapsed.value[layerId];
+};
+
+/**
+ * Toggle saved data collapse state
+ */
+const toggleSavedData = () => {
+  savedDataCollapsed.value = !savedDataCollapsed.value;
+};
+
+/**
+ * Format JSON with proper indentation
+ */
+const formatJSON = (obj: any): string => {
+  if (!obj) return '{}';
+  return JSON.stringify(obj, null, 2);
 };
 
 // Calculate grid coordinates from pixel position
@@ -188,6 +208,33 @@ const getGridAreaDimensions = () => {
                 No shapes
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Saved Data (LocalStorage) -->
+        <div v-if="savedData" class="pt-1.5 border-t border-gray-100">
+          <div class="flex items-center justify-between mb-0.5">
+            <div class="text-[10px] text-gray-500">LocalStorage Data:</div>
+            <button
+              @click="toggleSavedData"
+              class="text-gray-400 hover:text-gray-600 transition-colors"
+              type="button"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-3 w-3 transition-transform"
+                :class="{ 'rotate-90': !savedDataCollapsed }"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          <div v-show="!savedDataCollapsed" class="mt-1">
+            <pre class="text-[8px] font-mono text-gray-700 bg-gray-50 p-2 rounded border border-gray-200 overflow-auto max-h-48">{{ formatJSON(savedData) }}</pre>
           </div>
         </div>
 

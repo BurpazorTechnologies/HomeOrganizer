@@ -37,6 +37,7 @@ export class StepOrchestrator {
       shapeIds: [],
       selectedShapeId: null,
       primaryShapeId: null,
+      isSaved: false,
     };
 
     this.enterStep(this.currentStepConfig);
@@ -144,7 +145,37 @@ export class StepOrchestrator {
       this.managers
     );
 
+    // Reset saved state when shape is deleted
+    this.currentState.isSaved = false;
+
     this.notifyStepChange();
+  }
+
+  /**
+   * Save current step
+   */
+  private saveStep(): void {
+    StepHandlers.saveStep(
+      this.currentStepConfig,
+      this.currentState,
+      this.managers
+    );
+
+    this.notifyStepChange();
+  }
+
+  /**
+   * Load saved home area from localStorage
+   */
+  loadHomeArea(): boolean {
+    const loaded = StepHandlers.loadHomeArea(
+      this.currentStepConfig,
+      this.currentState,
+      this.managers
+    );
+
+    this.notifyStepChange();
+    return loaded;
   }
 
   /**
@@ -161,6 +192,7 @@ export class StepOrchestrator {
         shapeIds: [],
         selectedShapeId: null,
         primaryShapeId: null,
+        isSaved: false,
       };
       this.enterStep(this.currentStepConfig);
     }
@@ -181,6 +213,7 @@ export class StepOrchestrator {
         this.currentState,
         {
           onDelete: (shapeId) => this.deleteShape(shapeId),
+          onSave: () => this.saveStep(),
           onNextStep: () => this.transitionToNextStep(),
         }
       ),

@@ -82,6 +82,7 @@ export interface StepState {
   shapeIds: string[];                  // All shapes in this step
   selectedShapeId: string | null;      // Currently selected shape
   primaryShapeId: string | null;       // Main shape (for recentering)
+  isSaved: boolean;                    // Whether the current work has been saved
 }
 
 /**

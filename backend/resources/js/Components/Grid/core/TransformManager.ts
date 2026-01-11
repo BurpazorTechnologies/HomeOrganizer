@@ -38,7 +38,7 @@ export class TransformManager {
         // Create transformer
         this.transformer = new Konva.Transformer({
             rotateEnabled: TRANSFORMER_CONFIG.ROTATE_ENABLED,
-            enabledAnchors: TRANSFORMER_CONFIG.ENABLED_ANCHORS,
+            enabledAnchors: [...TRANSFORMER_CONFIG.ENABLED_ANCHORS],
             borderStroke: TRANSFORMER_CONFIG.BORDER_STROKE,
             anchorFill: TRANSFORMER_CONFIG.ANCHOR_FILL,
             anchorStroke: TRANSFORMER_CONFIG.ANCHOR_STROKE,

@@ -10,6 +10,7 @@ import { ZoomManager } from '@/Components/Grid/core/ZoomManager';
 import { LayerManager } from '@/Components/Grid/core/LayerManager';
 import { EVENT_TIMING } from '@/Components/Grid/types/constants';
 import type { StepInfo } from '@/Components/Grid/types/orchestration';
+import { localStorageService } from '@/Services/localStorage';
 // ==================== Props & Emits ====================
 interface Props {
     gridSize: number;
@@ -25,6 +26,7 @@ interface Emits {
     (e: 'resize', width: number, height: number): void;
     (e: 'update:isPanMode', value: boolean): void;
     (e: 'layerChange', layers: any[]): void;
+    (e: 'savedDataChange', savedData: any): void;
 }
 
 const props = defineProps<Props>();
@@ -150,6 +152,14 @@ function initializeManagers(): void {
     // Setup event handlers
     setupEventHandlers();
 
+    // Load saved home area if exists
+    const loaded = stepOrchestrator.loadHomeArea();
+
+    // If loaded, center on the primary shape
+    if (loaded) {
+        focusOnSelectedShape();
+    }
+
     // Emit initial step info
     emitStepChange();
     // Emit initial zoom level
@@ -167,6 +177,8 @@ function emitStepChange(): void {
     emit('stepChange', stepInfo);
     // Also emit layer info when step changes
     emitLayerChange();
+    // Also emit saved data when step changes
+    emitSavedDataChange();
 }
 
 /**
@@ -176,6 +188,14 @@ function emitLayerChange(): void {
     if (!layerManager) return;
     const layers = layerManager.getAllLayers();
     emit('layerChange', layers);
+}
+
+/**
+ * Emit saved data to parent
+ */
+function emitSavedDataChange(): void {
+    const savedData = localStorageService.getData();
+    emit('savedDataChange', savedData);
 }
 
 /**
@@ -413,6 +433,12 @@ watch(() => props.isPanMode, (newValue, oldValue) => {
 onMounted(() => {
     initializeCanvas();
     window.addEventListener('resize', handleWindowResize);
+
+    // Listen for localStorage changes for real-time updates
+    window.addEventListener('homeOrganizerDataChanged', handleLocalStorageChange);
+
+    // Emit initial saved data
+    emitSavedDataChange();
 });
 
 onUnmounted(() => {
@@ -421,7 +447,16 @@ onUnmounted(() => {
         clearTimeout(wheelTimeout);
     }
     window.removeEventListener('resize', handleWindowResize);
+    window.removeEventListener('homeOrganizerDataChanged', handleLocalStorageChange);
 });
+
+/**
+ * Handle localStorage changes for real-time updates
+ */
+function handleLocalStorageChange(event: Event): void {
+    const customEvent = event as CustomEvent;
+    emit('savedDataChange', customEvent.detail);
+}
 </script>
 
 <template>

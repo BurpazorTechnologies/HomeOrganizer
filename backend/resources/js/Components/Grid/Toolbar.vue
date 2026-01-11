@@ -5,6 +5,7 @@
  * Shows the current step/mode and contextual actions for the grid editor.
  */
 import { ref } from 'vue';
+import Swal from 'sweetalert2';
 import type { Step } from '@/Components/Grid/types/steps';
 import type { ToolbarAction } from '@/Components/Grid/types/orchestration';
 
@@ -79,6 +80,47 @@ const getZoomPercentage = () => {
   if (!props.currentZoom) return '100%';
   return `${Math.round(props.currentZoom * 100)}%`;
 };
+
+/**
+ * Handle action click with feedback
+ */
+const handleActionClick = async (action: ToolbarAction, event: MouseEvent) => {
+  const button = event.currentTarget as HTMLButtonElement;
+
+  // Add click animation
+  button.classList.add('scale-95');
+  setTimeout(() => {
+    button.classList.remove('scale-95');
+  }, 150);
+
+  // Execute action
+  action.action();
+
+  // Show toast notification
+  if (action.id === 'save') {
+    await Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Saved!',
+      text: 'Your changes have been saved',
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true,
+    });
+  } else if (action.id === 'delete') {
+    await Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Deleted!',
+      text: 'Shape has been removed',
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true,
+    });
+  }
+};
 </script>
 
 <template>
@@ -138,7 +180,8 @@ const getZoomPercentage = () => {
             :key="action.id"
             :class="getButtonClasses(action.variant)"
             :disabled="action.disabled"
-            @click="action.action"
+            @click="handleActionClick(action, $event)"
+            class="transform transition-transform duration-150 active:scale-95"
           >
             {{ action.label }}
           </button>

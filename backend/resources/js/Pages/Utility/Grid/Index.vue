@@ -35,6 +35,9 @@ const isPanMode = ref<boolean>(false);
 // Layer state
 const layers = ref<any[]>([]);
 
+// Saved data state
+const savedData = ref<any>(null);
+
 // Handle canvas click
 const handleCanvasClick = (position: { x: number; y: number }) => {
     lastClickPosition.value = position;
@@ -43,6 +46,11 @@ const handleCanvasClick = (position: { x: number; y: number }) => {
 // Handle layer changes from canvas
 const handleLayerChange = (layersData: any[]) => {
     layers.value = layersData;
+};
+
+// Handle saved data changes from canvas
+const handleSavedDataChange = (data: any) => {
+    savedData.value = data;
 };
 
 // Handle step changes from canvas
@@ -117,6 +125,7 @@ const handleRecenter = () => {
             :current-zoom="currentZoom"
             :selected-shape-id="selectedShapeId"
             :layers="layers"
+            :saved-data="savedData"
         />
 
         <!-- Main Canvas -->
@@ -131,6 +140,7 @@ const handleRecenter = () => {
             @zoom-change="handleZoomChange"
             @resize="handleCanvasResize"
             @layer-change="handleLayerChange"
+            @saved-data-change="handleSavedDataChange"
         />
     </div>
 </template>

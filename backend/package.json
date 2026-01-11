@@ -37,6 +37,6 @@
         "jwt-decode": "^4.0.0",
         "konva": "^10.0.12",
         "shiki": "^3.4.2",
-        "sweetalert2": "^11.19.1"
+        "sweetalert2": "^11.26.17"
     }
 }
