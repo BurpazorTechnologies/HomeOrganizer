@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import { TRANSFORMER_CONFIG, GRID_CONSTANTS } from '@/Components/Grid/types/constants';
+import type { BoundsService } from '@/Components/Grid/core/services/BoundsService';
 
 /**
  * TransformManager
@@ -8,21 +9,15 @@ import { TRANSFORMER_CONFIG, GRID_CONSTANTS } from '@/Components/Grid/types/cons
  * - Handles Konva Transformer for resize handles
  * - Provides grid snapping during transforms
  * - Emits events when shapes are transformed
+ * - Uses BoundsService for live parent bounds (never stale)
  */
-interface Bounds {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
 export class TransformManager {
     private stage: Konva.Stage;
     private layer: Konva.Layer;
     private transformer: Konva.Transformer;
     private gridSize: number;
     private snapEnabled: boolean;
-    private parentBounds: Bounds | null = null;
+    private boundsService: BoundsService | null = null;
     private onTransformCallback?: (shapeId: string, dimensions: {
         x: number;
         y: number;
@@ -36,12 +31,14 @@ export class TransformManager {
         options: {
             gridSize: number;
             snapEnabled: boolean;
+            boundsService?: BoundsService;
         }
     ) {
         this.stage = stage;
         this.layer = layer;
         this.gridSize = options.gridSize;
         this.snapEnabled = options.snapEnabled;
+        this.boundsService = options.boundsService || null;
 
         // Create transformer
         this.transformer = new Konva.Transformer({
@@ -61,34 +58,24 @@ export class TransformManager {
                     newBox.height = GRID_CONSTANTS.MIN_SHAPE_SIZE;
                 }
 
-                // Parent bounds constraint (if set)
-                if (this.parentBounds) {
-                    const parent = this.parentBounds;
-
-                    // Constrain left edge
-                    if (newBox.x < parent.x) {
-                        newBox.width -= parent.x - newBox.x;
-                        newBox.x = parent.x;
-                    }
-
-                    // Constrain top edge
-                    if (newBox.y < parent.y) {
-                        newBox.height -= parent.y - newBox.y;
-                        newBox.y = parent.y;
-                    }
-
-                    // Constrain right edge
-                    if (newBox.x + newBox.width > parent.x + parent.width) {
-                        newBox.width = parent.x + parent.width - newBox.x;
-                    }
-
-                    // Constrain bottom edge
-                    if (newBox.y + newBox.height > parent.y + parent.height) {
-                        newBox.height = parent.y + parent.height - newBox.y;
-                    }
+                // Use BoundsService for live parent bounds (preferred)
+                const shapeId = this.transformer.nodes()[0]?.id();
+                if (shapeId && this.boundsService) {
+                    const constrained = this.boundsService.constrainResize(
+                        shapeId,
+                        { x: newBox.x, y: newBox.y, width: newBox.width, height: newBox.height },
+                        { width: GRID_CONSTANTS.MIN_SHAPE_SIZE, height: GRID_CONSTANTS.MIN_SHAPE_SIZE }
+                    );
+                    return {
+                        ...newBox,
+                        x: constrained.x,
+                        y: constrained.y,
+                        width: constrained.width,
+                        height: constrained.height,
+                    };
                 }
 
-                // Snap to grid if enabled
+                // Fallback: Just apply grid snapping if no boundsService
                 if (this.snapEnabled) {
                     newBox.x = Math.round(newBox.x / this.gridSize) * this.gridSize;
                     newBox.y = Math.round(newBox.y / this.gridSize) * this.gridSize;
@@ -212,10 +199,10 @@ export class TransformManager {
     }
 
     /**
-     * Set parent bounds for resize constraints
+     * Set BoundsService for live parent bounds queries
      */
-    setParentBounds(bounds: Bounds | null): void {
-        this.parentBounds = bounds;
+    setBoundsService(boundsService: BoundsService): void {
+        this.boundsService = boundsService;
     }
 
     /**

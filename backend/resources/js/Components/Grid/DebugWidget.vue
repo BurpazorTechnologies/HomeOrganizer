@@ -23,6 +23,11 @@ interface Props {
 
 const props = defineProps<Props>();
 
+// Emits
+const emit = defineEmits<{
+  (e: 'reset-canvas'): void;
+}>();
+
 // Check if we're in development mode
 const isDev = import.meta.env.DEV;
 
@@ -140,6 +145,17 @@ const getGridCoordinates = (pixelX: number, pixelY: number) => {
     gridX: Math.floor(pixelX / props.gridSize),
     gridY: Math.floor(pixelY / props.gridSize)
   };
+};
+
+/**
+ * Reset canvas - clear localStorage and reload
+ */
+const handleResetCanvas = () => {
+  if (confirm('Reset canvas? This will clear all saved data and reload the page.')) {
+    localStorageService.clear();
+    emit('reset-canvas');
+    window.location.reload();
+  }
 };
 
 // Calculate grid area dimensions
@@ -342,11 +358,20 @@ const getGridAreaDimensions = () => {
         </div>
       </div>
 
-      <!-- Dev mode indicator -->
+      <!-- Dev mode indicator and actions -->
       <div class="mt-2 pt-2 border-t border-gray-200">
-        <div class="flex items-center gap-1.5">
-          <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-          <span class="text-[10px] text-gray-500">Dev Mode</span>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+            <span class="text-[10px] text-gray-500">Dev Mode</span>
+          </div>
+          <button
+            @click="handleResetCanvas"
+            class="text-[9px] px-1.5 py-0.5 bg-red-100 hover:bg-red-200 text-red-600 rounded transition-colors"
+            title="Clear localStorage and reload"
+          >
+            Reset Canvas
+          </button>
         </div>
       </div>
     </div>

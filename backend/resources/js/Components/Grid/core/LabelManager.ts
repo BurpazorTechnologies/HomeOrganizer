@@ -1,28 +1,54 @@
 import Konva from 'konva';
+import type { LayerManager } from '@/Components/Grid/core/LayerManager';
 
 /**
  * LabelManager
  *
- * Manages text labels that appear below shapes showing their dimensions.
- * Example: "410x590"
+ * Manages text labels that appear on shapes showing their dimensions or names.
+ * Labels are placed on the step's paired label layer (not a global overlay).
+ *
+ * Each shape's label is placed on the konvaLabelLayer of its parent layer,
+ * ensuring proper opacity handling when layers become inactive.
  */
 export class LabelManager {
-    private stage: Konva.Stage;
-    private layer: Konva.Layer;
+    private layerManager: LayerManager;
     private labels: Map<string, Konva.Text> = new Map();
     private labelTypes: Map<string, 'dimension' | 'areaName'> = new Map();
+    private labelLayerIds: Map<string, string> = new Map(); // shapeId -> layerId
 
-    constructor(stage: Konva.Stage, layer: Konva.Layer) {
-        this.stage = stage;
-        this.layer = layer;
+    constructor(layerManager: LayerManager) {
+        this.layerManager = layerManager;
+    }
+
+    /**
+     * Get the label layer for a shape
+     * Uses stored layerId if exists, otherwise uses current layer
+     */
+    private getLabelLayer(shapeId?: string): Konva.Layer | null {
+        // If we have a stored layer for this shape, use it
+        if (shapeId) {
+            const storedLayerId = this.labelLayerIds.get(shapeId);
+            if (storedLayerId) {
+                return this.layerManager.getKonvaLabelLayer(storedLayerId);
+            }
+        }
+
+        // Otherwise use current layer
+        const currentLayerId = this.layerManager.getCurrentLayerId();
+        if (!currentLayerId) return null;
+        return this.layerManager.getKonvaLabelLayer(currentLayerId);
     }
 
     /**
      * Create or update a label for a shape
+     * @param shapeId - The shape ID
+     * @param dimensions - Shape dimensions for positioning
+     * @param layerId - Optional layer ID (defaults to current layer)
      */
     updateLabel(
         shapeId: string,
-        dimensions: { x: number; y: number; width: number; height: number }
+        dimensions: { x: number; y: number; width: number; height: number },
+        layerId?: string
     ): void {
         // Don't overwrite area name labels
         if (this.labelTypes.get(shapeId) === 'areaName') {
@@ -32,12 +58,26 @@ export class LabelManager {
                 const labelX = dimensions.x + dimensions.width / 2 - label.width() / 2;
                 const labelY = dimensions.y + dimensions.height / 2 - label.height() / 2;
                 label.position({ x: labelX, y: labelY });
-                this.layer.batchDraw();
+                label.moveToTop();
+                label.getLayer()?.batchDraw();
             }
             return;
         }
 
         const labelText = `${Math.round(dimensions.width)}x${Math.round(dimensions.height)}`;
+
+        // Get or determine the layer for this label
+        const targetLayerId = layerId || this.labelLayerIds.get(shapeId) || this.layerManager.getCurrentLayerId();
+        if (!targetLayerId) {
+            console.warn('LabelManager: No layer available for label');
+            return;
+        }
+
+        const labelLayer = this.layerManager.getKonvaLabelLayer(targetLayerId);
+        if (!labelLayer) {
+            console.warn(`LabelManager: Label layer not found for ${targetLayerId}`);
+            return;
+        }
 
         // Check if label already exists
         let label = this.labels.get(shapeId);
@@ -55,7 +95,8 @@ export class LabelManager {
             });
 
             this.labels.set(shapeId, label);
-            this.layer.add(label);
+            this.labelLayerIds.set(shapeId, targetLayerId);
+            labelLayer.add(label);
         } else {
             // Update existing label
             label.text(labelText);
@@ -66,18 +107,37 @@ export class LabelManager {
         const labelY = dimensions.y + dimensions.height + 8; // 8px gap below shape
 
         label.position({ x: labelX, y: labelY });
+        label.moveToTop();
         this.labelTypes.set(shapeId, 'dimension');
-        this.layer.batchDraw();
+        labelLayer.batchDraw();
     }
 
     /**
      * Update label to show area name (centered on shape)
+     * @param shapeId - The shape ID
+     * @param areaName - The area name to display
+     * @param dimensions - Shape dimensions for positioning
+     * @param layerId - Optional layer ID (defaults to current layer)
      */
     updateAreaNameLabel(
         shapeId: string,
         areaName: string,
-        dimensions: { x: number; y: number; width: number; height: number }
+        dimensions: { x: number; y: number; width: number; height: number },
+        layerId?: string
     ): void {
+        // Get or determine the layer for this label
+        const targetLayerId = layerId || this.labelLayerIds.get(shapeId) || this.layerManager.getCurrentLayerId();
+        if (!targetLayerId) {
+            console.warn('LabelManager: No layer available for area name label');
+            return;
+        }
+
+        const labelLayer = this.layerManager.getKonvaLabelLayer(targetLayerId);
+        if (!labelLayer) {
+            console.warn(`LabelManager: Label layer not found for ${targetLayerId}`);
+            return;
+        }
+
         let label = this.labels.get(shapeId);
 
         if (!label) {
@@ -95,7 +155,8 @@ export class LabelManager {
             });
 
             this.labels.set(shapeId, label);
-            this.layer.add(label);
+            this.labelLayerIds.set(shapeId, targetLayerId);
+            labelLayer.add(label);
         } else {
             // Update existing label to area name
             label.text(areaName);
@@ -105,7 +166,7 @@ export class LabelManager {
         }
 
         // Draw first to ensure text is measured
-        this.layer.batchDraw();
+        labelLayer.batchDraw();
 
         // Position label at center of shape (after text measurement)
         const labelWidth = label.width();
@@ -114,8 +175,9 @@ export class LabelManager {
         const labelY = dimensions.y + dimensions.height / 2 - labelHeight / 2;
 
         label.position({ x: labelX, y: labelY });
+        label.moveToTop();
         this.labelTypes.set(shapeId, 'areaName');
-        this.layer.batchDraw();
+        labelLayer.batchDraw();
     }
 
     /**
@@ -124,10 +186,12 @@ export class LabelManager {
     removeLabel(shapeId: string): void {
         const label = this.labels.get(shapeId);
         if (label) {
+            const layer = label.getLayer();
             label.destroy();
             this.labels.delete(shapeId);
             this.labelTypes.delete(shapeId);
-            this.layer.batchDraw();
+            this.labelLayerIds.delete(shapeId);
+            layer?.batchDraw();
         }
     }
 
@@ -142,10 +206,14 @@ export class LabelManager {
      * Clear all labels
      */
     clearAll(): void {
-        this.labels.forEach(label => label.destroy());
+        this.labels.forEach(label => {
+            const layer = label.getLayer();
+            label.destroy();
+            layer?.batchDraw();
+        });
         this.labels.clear();
         this.labelTypes.clear();
-        this.layer.batchDraw();
+        this.labelLayerIds.clear();
     }
 
     /**
@@ -155,7 +223,8 @@ export class LabelManager {
         const label = this.labels.get(shapeId);
         if (label) {
             label.show();
-            this.layer.batchDraw();
+            label.moveToTop();
+            label.getLayer()?.batchDraw();
         }
     }
 
@@ -166,7 +235,14 @@ export class LabelManager {
         const label = this.labels.get(shapeId);
         if (label) {
             label.hide();
-            this.layer.batchDraw();
+            label.getLayer()?.batchDraw();
         }
+    }
+
+    /**
+     * Get the layer ID where a shape's label is stored
+     */
+    getLabelLayerId(shapeId: string): string | null {
+        return this.labelLayerIds.get(shapeId) || null;
     }
 }

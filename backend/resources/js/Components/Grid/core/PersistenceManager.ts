@@ -13,6 +13,7 @@
 
 import { localStorageService, type SavedData, type ShapeData, type ChildAreaData } from '@/Services/localStorage';
 import type { Shape } from '@/Components/Grid/types/shapes';
+import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
 
 /**
  * Storage adapter interface - implement this for different backends
@@ -113,10 +114,14 @@ interface ManagerInstances {
 
 /**
  * PersistenceManager - Main class for managing grid persistence
+ *
+ * Now integrates with GridStateStore for centralized state management.
+ * Uses parentShapeId for BoundsService live bounds instead of static parentBounds.
  */
 export class PersistenceManager {
   private adapter: StorageAdapter;
   private managers: ManagerInstances | null = null;
+  private store: GridStateStore | null = null;
   private onDataChangeCallbacks: Array<(data: GridPersistenceData | null) => void> = [];
 
   constructor(adapter?: StorageAdapter) {
@@ -128,6 +133,13 @@ export class PersistenceManager {
    */
   setManagers(managers: ManagerInstances): void {
     this.managers = managers;
+  }
+
+  /**
+   * Set GridStateStore reference for centralized state
+   */
+  setStore(store: GridStateStore): void {
+    this.store = store;
   }
 
   /**
@@ -304,12 +316,16 @@ export class PersistenceManager {
 
   /**
    * Load child areas for a specific parent
+   *
+   * Updated to use parentShapeId for BoundsService live bounds queries.
+   * No longer uses setShapeDragBounds (deprecated).
    */
   async loadChildAreas(
     parentAreaId: string,
     layerId: string,
     parentBounds: { x: number; y: number; width: number; height: number },
-    onShapeCreated: (shape: Shape, isPrimary: boolean) => void
+    onShapeCreated: (shape: Shape, isPrimary: boolean) => void,
+    parentShapeId?: string // NEW: For BoundsService live bounds
   ): Promise<boolean> {
     if (!this.managers) {
       console.error('PersistenceManager: managers not set');
@@ -323,6 +339,9 @@ export class PersistenceManager {
       console.log('PersistenceManager: No saved child areas for parent', parentAreaId);
       return false;
     }
+
+    // Get parentShapeId from childAreaData if not provided
+    const effectiveParentShapeId = parentShapeId || childAreaData.parentShapeId;
 
     // Recreate each shape
     for (let i = 0; i < childAreaData.shapes.length; i++) {
@@ -341,9 +360,26 @@ export class PersistenceManager {
           width: shapeData.width,
           height: shapeData.height,
           layerId,
-          parentBounds,
+          parentBounds, // Fallback for legacy code paths (deprecated)
+          parentShapeId: effectiveParentShapeId, // For BoundsService live bounds (preferred)
         }
       );
+
+      // Note: setShapeDragBounds is no longer needed - BoundsService queries
+      // live parent bounds via parentShapeId relationship in GridStateStore
+
+      // Debug: Verify shape is in store with correct parentShapeId
+      if (this.store) {
+        const storedShape = this.store.getShape(shape.id);
+        const parentInStore = effectiveParentShapeId ? this.store.getShape(effectiveParentShapeId) : null;
+        console.log(`[PersistenceManager] Child shape created:`, {
+          childId: shape.id,
+          childParentShapeId: storedShape?.parentShapeId,
+          parentId: effectiveParentShapeId,
+          parentFound: !!parentInStore,
+          parentBounds: parentInStore ? { x: parentInStore.x, y: parentInStore.y, width: parentInStore.width, height: parentInStore.height } : null,
+        });
+      }
 
       // Add to layer
       this.managers.layerManager.addShapeToLayer(layerId, shape.id, isPrimary);

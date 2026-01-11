@@ -3,6 +3,8 @@
  *
  * Stateless handlers for step behavior.
  * All logic is driven by configuration + state passed as parameters.
+ *
+ * Uses BoundsService for live bounds queries and validation.
  */
 
 import type {
@@ -12,6 +14,7 @@ import type {
   ToolbarAction,
   ManagerInstances,
 } from '@/Components/Grid/types/orchestration';
+import { isPositionWithinBounds } from '@/Components/Grid/core/utils/bounds';
 
 export class StepHandlers {
   /**
@@ -23,7 +26,7 @@ export class StepHandlers {
     state: StepState,
     managers: ManagerInstances
   ): void {
-    // Clicked on canvas
+    // Clicked on canvas (empty space)
     if (context.target === 'canvas') {
       // In Step 2+, if requiresExplicitCreate is set and we're NOT in creation mode,
       // clicking canvas should select parent (regardless of how many child shapes exist)
@@ -36,10 +39,21 @@ export class StepHandlers {
       if (state.shapeIds.length < config.rules.maxShapes) {
         // If we have parent context, validate click is within parent bounds
         if (config.parentContext) {
-          if (!this.isPositionWithinBounds(context.position, config.parentContext.parentBounds)) {
-            // Click outside parent bounds - select parent instead of ignoring
-            this.selectParent(state, managers);
-            return;
+          // Use BoundsService for live parent bounds validation if available
+          const boundsService = managers.boundsService;
+          if (boundsService && state.parentShapeId) {
+            const parentBounds = boundsService.getShapeBounds(state.parentShapeId);
+            if (parentBounds && !isPositionWithinBounds(context.position, parentBounds)) {
+              // Click outside parent bounds - select parent instead of ignoring
+              this.selectParent(state, managers);
+              return;
+            }
+          } else {
+            // Fallback to static bounds from config
+            if (!isPositionWithinBounds(context.position, config.parentContext.parentBounds)) {
+              this.selectParent(state, managers);
+              return;
+            }
           }
         }
         this.createShape(context.position, config, state, managers);
@@ -47,8 +61,7 @@ export class StepHandlers {
         state.isCreationMode = false;
       } else {
         // Deselect if clicking empty space
-        managers.shapeManager.deselectShape();
-        managers.transformManager.detach();
+        managers.selectionManager.deselect();
         state.selectedShapeId = null;
       }
       return;
@@ -56,10 +69,38 @@ export class StepHandlers {
 
     // Clicked on a shape
     if (context.target === 'shape' && context.shapeId) {
+      // Check if this is a child shape (in our current step's shapes)
       if (state.shapeIds.includes(context.shapeId)) {
         this.selectShape(context.shapeId, state, managers);
         // Disable creation mode when selecting a shape
         state.isCreationMode = false;
+        return;
+      }
+
+      // Check if clicked on parent shape while in creation mode
+      // This happens when user clicks "Create Area" then clicks on the parent area
+      if (config.parentContext && context.shapeId === state.parentShapeId && state.isCreationMode) {
+        // Validate click is within parent bounds using BoundsService or fallback
+        const boundsService = managers.boundsService;
+        let isValid = false;
+        if (boundsService && state.parentShapeId) {
+          const parentBounds = boundsService.getShapeBounds(state.parentShapeId);
+          isValid = parentBounds ? isPositionWithinBounds(context.position, parentBounds) : false;
+        } else {
+          isValid = isPositionWithinBounds(context.position, config.parentContext.parentBounds);
+        }
+
+        if (isValid) {
+          this.createShape(context.position, config, state, managers);
+          // Disable creation mode after creating one shape
+          state.isCreationMode = false;
+        }
+        return;
+      }
+
+      // Clicked on parent shape but not in creation mode - select parent
+      if (config.parentContext && context.shapeId === state.parentShapeId) {
+        this.selectParent(state, managers);
       }
     }
   }
@@ -69,7 +110,8 @@ export class StepHandlers {
    */
   private static selectParent(
     state: StepState,
-    managers: ManagerInstances
+    managers: ManagerInstances,
+    layerId?: string
   ): void {
     if (!state.parentShapeId) {
       console.log('selectParent: No parent shape ID in state');
@@ -82,14 +124,9 @@ export class StepHandlers {
       return;
     }
 
-    // Deselect any currently selected child shape and detach transformer
-    managers.shapeManager.deselectShape();
-    managers.transformManager.detach();
-
-    // Visual feedback: add a subtle highlight stroke to parent
-    parentNode.strokeWidth(4);
-    parentNode.dash([10, 5]);
-    parentNode.getLayer()?.batchDraw();
+    // Use SelectionManager to handle parent selection visuals
+    const parentLayerId = layerId || managers.layerManager.getCurrentLayerId() || '';
+    managers.selectionManager.selectAsParent(state.parentShapeId, parentLayerId);
 
     // Set parent as "selected" in state
     state.selectedShapeId = state.parentShapeId;
@@ -98,22 +135,8 @@ export class StepHandlers {
   }
 
   /**
-   * Check if a position is within given bounds
-   */
-  private static isPositionWithinBounds(
-    position: { x: number; y: number },
-    bounds: { x: number; y: number; width: number; height: number }
-  ): boolean {
-    return (
-      position.x >= bounds.x &&
-      position.x <= bounds.x + bounds.width &&
-      position.y >= bounds.y &&
-      position.y <= bounds.y + bounds.height
-    );
-  }
-
-  /**
    * Check if a new shape would overlap with existing shapes
+   * Uses BoundsService if available, falls back to local calculation
    */
   private static wouldOverlap(
     newShape: { x: number; y: number; width: number; height: number },
@@ -149,29 +172,44 @@ export class StepHandlers {
     state: StepState,
     managers: ManagerInstances
   ): void {
-    const parentBounds = config.parentContext?.parentBounds;
-
     // Check for overlaps if there are existing shapes
     if (state.shapeIds.length > 0) {
       const defaultWidth = config.shapeDefaults.width || 200;
       const defaultHeight = config.shapeDefaults.height || 200;
+      const newShapeBounds = {
+        x: position.x,
+        y: position.y,
+        width: defaultWidth,
+        height: defaultHeight,
+      };
 
-      const wouldOverlap = this.wouldOverlap(
-        {
-          x: position.x,
-          y: position.y,
-          width: defaultWidth,
-          height: defaultHeight,
-        },
-        state.shapeIds,
-        managers
-      );
+      // Use BoundsService for overlap check if available
+      const boundsService = managers.boundsService;
+      const parentShapeIdForCheck = config.parentContext?.parentShapeId || null;
 
-      if (wouldOverlap) {
+      let hasOverlap = false;
+      if (boundsService) {
+        // BoundsService.wouldOverlapSiblings checks all shapes with same parent
+        hasOverlap = boundsService.wouldOverlapSiblings(
+          newShapeBounds,
+          '', // No shape to exclude (we're creating new)
+          parentShapeIdForCheck
+        );
+      } else {
+        // Fallback to local overlap check
+        hasOverlap = this.wouldOverlap(newShapeBounds, state.shapeIds, managers);
+      }
+
+      if (hasOverlap) {
         console.warn('Cannot create shape - would overlap with existing shape');
         return;
       }
     }
+
+    // Pass parentShapeId for BoundsService to track parent relationship
+    // This enables live bounds queries (never stale)
+    const parentShapeId = config.parentContext?.parentShapeId || null;
+    const parentBounds = config.parentContext?.parentBounds || null;
 
     const shape = managers.shapeManager.createRectangle(
       position.x,
@@ -182,7 +220,8 @@ export class StepHandlers {
         label: config.shapeDefaults.label,
         width: config.shapeDefaults.width,
         height: config.shapeDefaults.height,
-        parentBounds,
+        parentBounds, // Fallback for legacy code paths (deprecated)
+        parentShapeId, // For BoundsService live bounds (preferred)
         layerId: config.layerId,
       }
     );
@@ -236,35 +275,31 @@ export class StepHandlers {
   private static selectShape(
     shapeId: string,
     state: StepState,
-    managers: ManagerInstances
+    managers: ManagerInstances,
+    layerId?: string
   ): void {
-    // If we were previously selecting the parent, reset its visual state
+    // If we were previously selecting the parent, reset its visual state via SelectionManager
     if (state.parentShapeId && state.selectedShapeId === state.parentShapeId) {
-      const parentNode = managers.shapeManager.getShapeNode(state.parentShapeId);
-      if (parentNode) {
-        parentNode.strokeWidth(2); // Reset to default
-        parentNode.dash([]); // Remove dashed line
-        parentNode.getLayer()?.batchDraw();
-      }
+      managers.selectionManager.resetParentVisual(state.parentShapeId);
     }
 
+    // Use SelectionManager to handle selection
+    const targetLayerId = layerId || managers.layerManager.getCurrentLayerId() || '';
+    managers.selectionManager.select(shapeId, targetLayerId);
+
     state.selectedShapeId = shapeId;
-    managers.shapeManager.selectShape(shapeId);
-    const node = managers.shapeManager.getShapeNode(shapeId);
-    if (node) {
-      managers.transformManager.attachTo(node);
-    }
   }
 
   /**
    * Delete shape
+   * Returns true if the last child shape was deleted (for transition handling)
    */
   static deleteShape(
     shapeId: string,
     config: StepConfiguration,
     state: StepState,
     managers: ManagerInstances
-  ): void {
+  ): { deletedLastChild: boolean } {
     // Remove from state
     state.shapeIds = state.shapeIds.filter(id => id !== shapeId);
     if (state.primaryShapeId === shapeId) {
@@ -277,8 +312,13 @@ export class StepHandlers {
     // Remove from managers
     managers.shapeManager.deleteShape(shapeId);
     managers.labelManager.removeLabel(shapeId);
-    managers.transformManager.detach();
+    managers.selectionManager.deselect();
     managers.layerManager.removeShapeFromLayer(config.layerId, shapeId);
+
+    // Check if this was a child step and now has no shapes
+    const deletedLastChild = config.parentContext !== undefined && state.shapeIds.length === 0;
+
+    return { deletedLastChild };
   }
 
   /**
@@ -369,26 +409,27 @@ export class StepHandlers {
     if (config.step.order >= 2 && config.parentContext) {
       const parentAreaId = state.parentAreaId || 'unknown';
 
-      // First, ensure home area is still saved (from layer 1)
-      const layer1 = managers.layerManager.getLayer('layer_1');
-      if (layer1 && layer1.shapeIds.length > 0) {
+      // First, ensure home area is still saved (from parent layer)
+      const parentLayerId = config.parentContext.parentLayerId;
+      const parentLayer = managers.layerManager.getLayer(parentLayerId);
+      if (parentLayer && parentLayer.shapeIds.length > 0) {
         await pm.saveHomeArea(
           'step_home_area',
-          'layer_1',
-          layer1.shapeIds,
-          layer1.primaryShapeId
+          parentLayerId,
+          parentLayer.shapeIds,
+          parentLayer.primaryShapeId
         );
       }
 
       // Then save child areas using LayerManager for consistency
-      const layer2 = managers.layerManager.getLayer(config.layerId);
-      if (layer2 && layer2.shapeIds.length > 0) {
+      const childLayer = managers.layerManager.getLayer(config.layerId);
+      if (childLayer && childLayer.shapeIds.length > 0) {
         await pm.saveChildAreas(
           parentAreaId,
           state.parentShapeId || '',
           config.step.id,
           config.layerId,
-          layer2.shapeIds,
+          childLayer.shapeIds,
           config.step.order
         );
       }
@@ -479,15 +520,16 @@ export class StepHandlers {
       this.deleteShape(id, config, state, managers);
     });
 
-    // Get parent bounds from config
+    // Get parent bounds and parentShapeId from config
     const parentBounds = config.parentContext ? {
       x: config.parentContext.parentBounds.x,
       y: config.parentContext.parentBounds.y,
       width: config.parentContext.parentBounds.width,
       height: config.parentContext.parentBounds.height,
     } : { x: 0, y: 0, width: 1000, height: 1000 };
+    const parentShapeId = config.parentContext?.parentShapeId;
 
-    // Load via PersistenceManager
+    // Load via PersistenceManager - pass parentShapeId for BoundsService live bounds
     const loaded = await pm.loadChildAreas(
       state.parentAreaId,
       config.layerId,
@@ -499,7 +541,8 @@ export class StepHandlers {
         if (isPrimary) {
           state.primaryShapeId = shape.id;
         }
-      }
+      },
+      parentShapeId // For BoundsService live bounds
     );
 
     if (loaded) {

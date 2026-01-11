@@ -56,7 +56,9 @@ export interface ManagerInstances {
   gridManager: any;
   layerManager: any;
   areaManager: any;
+  selectionManager: any; // Centralized selection logic
   persistenceManager?: any; // Optional - for save/load operations
+  boundsService?: any; // BoundsService for live bounds queries
 }
 
 /**
@@ -65,6 +67,7 @@ export interface ManagerInstances {
 export interface ParentContext {
   parentAreaId: string;
   parentShapeId: string;
+  parentLayerId: string;  // Layer ID of the parent layer (for hierarchy)
   parentBounds: {
     x: number;
     y: number;
@@ -111,6 +114,7 @@ export interface StepState {
     shapeId: string;
   } | null;
   isCreationMode?: boolean;            // Whether we're in explicit creation mode (waiting for click to create)
+  deletedLastChild?: boolean;          // Flag to track if last child was deleted (for transition on save)
 }
 
 /**

@@ -115,10 +115,10 @@ const handleActionClick = async (action: ToolbarAction, event: MouseEvent) => {
     button.classList.remove('scale-95');
   }, 150);
 
-  // Execute action
-  action.action();
+  // Execute action (await if it's async)
+  await action.action();
 
-  // Show toast notification
+  // Show toast notification for save and delete actions
   if (action.id === 'save') {
     await Swal.fire({
       toast: true,
