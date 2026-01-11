@@ -4,7 +4,7 @@
  *
  * Shows the current step/mode and contextual actions for the grid editor.
  */
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import Swal from 'sweetalert2';
 import type { Step } from '@/Components/Grid/types/steps';
 import type { ToolbarAction } from '@/Components/Grid/types/orchestration';
@@ -15,6 +15,9 @@ interface Props {
   actions?: ToolbarAction[];
   currentZoom?: number;
   isPanMode?: boolean;
+  pendingAreaName?: { areaId: string; shapeId: string } | null;
+  selectedShapeId?: string | null;
+  selectedShapeName?: string | null;
 }
 
 interface Emits {
@@ -23,6 +26,8 @@ interface Emits {
   (e: 'reset-zoom'): void;
   (e: 'toggle-pan'): void;
   (e: 'recenter'): void;
+  (e: 'save-area-name', payload: { areaId: string; name: string }): void;
+  (e: 'save-shape-label', payload: { shapeId: string; label: string }): void;
 }
 
 const props = defineProps<Props>();
@@ -31,12 +36,29 @@ const emit = defineEmits<Emits>();
 // Collapse state
 const isCollapsed = ref(false);
 
+// Area name input state
+const areaNameInput = ref('');
+
+// Shape label input state
+const shapeLabelInput = ref('');
+
 /**
  * Toggle collapse state
  */
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value;
 };
+
+/**
+ * Watch for selected shape name changes and update input
+ */
+watch(() => props.selectedShapeName, (newName) => {
+  if (newName !== null && newName !== undefined) {
+    shapeLabelInput.value = newName;
+  } else {
+    shapeLabelInput.value = '';
+  }
+}, { immediate: true });
 
 /**
  * Get button classes based on variant
@@ -121,6 +143,32 @@ const handleActionClick = async (action: ToolbarAction, event: MouseEvent) => {
     });
   }
 };
+
+/**
+ * Save area name
+ */
+const saveAreaName = () => {
+  if (!props.pendingAreaName || !areaNameInput.value.trim()) return;
+
+  emit('save-area-name', {
+    areaId: props.pendingAreaName.areaId,
+    name: areaNameInput.value.trim(),
+  });
+
+  areaNameInput.value = '';
+};
+
+/**
+ * Save shape label
+ */
+const saveShapeLabel = () => {
+  if (!props.selectedShapeId) return;
+
+  emit('save-shape-label', {
+    shapeId: props.selectedShapeId,
+    label: shapeLabelInput.value.trim(),
+  });
+};
 </script>
 
 <template>
@@ -184,6 +232,29 @@ const handleActionClick = async (action: ToolbarAction, event: MouseEvent) => {
             class="transform transition-transform duration-150 active:scale-95"
           >
             {{ action.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Shape Label Input - Always shows when a shape is selected -->
+      <div v-if="selectedShapeId" class="mt-2 pt-2 border-t border-gray-200">
+        <div class="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          Shape Label
+        </div>
+        <div class="flex gap-1">
+          <input
+            v-model="shapeLabelInput"
+            type="text"
+            placeholder="e.g: Kitchen, Living Room"
+            class="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            @keyup.enter="saveShapeLabel"
+            @blur="saveShapeLabel"
+          />
+          <button
+            @click="saveShapeLabel"
+            class="px-2 py-1 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Save
           </button>
         </div>
       </div>

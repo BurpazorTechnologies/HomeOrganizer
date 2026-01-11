@@ -9,12 +9,20 @@ import { TRANSFORMER_CONFIG, GRID_CONSTANTS } from '@/Components/Grid/types/cons
  * - Provides grid snapping during transforms
  * - Emits events when shapes are transformed
  */
+interface Bounds {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
 export class TransformManager {
     private stage: Konva.Stage;
     private layer: Konva.Layer;
     private transformer: Konva.Transformer;
     private gridSize: number;
     private snapEnabled: boolean;
+    private parentBounds: Bounds | null = null;
     private onTransformCallback?: (shapeId: string, dimensions: {
         x: number;
         y: number;
@@ -51,6 +59,33 @@ export class TransformManager {
                 }
                 if (newBox.height < GRID_CONSTANTS.MIN_SHAPE_SIZE) {
                     newBox.height = GRID_CONSTANTS.MIN_SHAPE_SIZE;
+                }
+
+                // Parent bounds constraint (if set)
+                if (this.parentBounds) {
+                    const parent = this.parentBounds;
+
+                    // Constrain left edge
+                    if (newBox.x < parent.x) {
+                        newBox.width -= parent.x - newBox.x;
+                        newBox.x = parent.x;
+                    }
+
+                    // Constrain top edge
+                    if (newBox.y < parent.y) {
+                        newBox.height -= parent.y - newBox.y;
+                        newBox.y = parent.y;
+                    }
+
+                    // Constrain right edge
+                    if (newBox.x + newBox.width > parent.x + parent.width) {
+                        newBox.width = parent.x + parent.width - newBox.x;
+                    }
+
+                    // Constrain bottom edge
+                    if (newBox.y + newBox.height > parent.y + parent.height) {
+                        newBox.height = parent.y + parent.height - newBox.y;
+                    }
                 }
 
                 // Snap to grid if enabled
@@ -174,6 +209,13 @@ export class TransformManager {
      */
     toggleSnap(enabled: boolean): void {
         this.snapEnabled = enabled;
+    }
+
+    /**
+     * Set parent bounds for resize constraints
+     */
+    setParentBounds(bounds: Bounds | null): void {
+        this.parentBounds = bounds;
     }
 
     /**

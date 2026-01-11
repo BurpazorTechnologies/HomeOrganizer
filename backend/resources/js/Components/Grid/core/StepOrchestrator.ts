@@ -14,7 +14,7 @@ import type {
   StepConfiguration,
   StepState,
 } from '@/Components/Grid/types/orchestration';
-import { STEPS } from '@/Components/Grid/types/steps';
+import { STEPS, createStep } from '@/Components/Grid/types/steps';
 import { SHAPE_COLORS } from '@/Components/Grid/types/constants';
 import { StepHandlers } from '@/Components/Grid/steps/StepHandlers';
 
@@ -74,6 +74,21 @@ export class StepOrchestrator {
     // Create layer for this step
     this.managers.layerManager.createLayer(config.step);
 
+    // Handle parent context if this is a child area step
+    if (config.parentContext) {
+      const parentNode = this.managers.shapeManager.getShapeNode(config.parentContext.parentShapeId);
+      if (parentNode) {
+        // Make parent semi-transparent and non-interactive
+        parentNode.opacity(0.5);
+        parentNode.draggable(false);
+        parentNode.listening(false);
+      }
+
+      // Set grid clipping and transform bounds
+      this.managers.gridManager.setClipBounds(config.parentContext.parentBounds);
+      this.managers.transformManager.setParentBounds(config.parentContext.parentBounds);
+    }
+
     // Emit to UI
     this.notifyStepChange();
   }
@@ -85,6 +100,21 @@ export class StepOrchestrator {
     // Deselect shapes
     this.managers.shapeManager.deselectShape();
     this.managers.transformManager.detach();
+
+    // Handle parent context cleanup if this was a child area step
+    if (config.parentContext) {
+      const parentNode = this.managers.shapeManager.getShapeNode(config.parentContext.parentShapeId);
+      if (parentNode) {
+        // Restore parent to full opacity and interactive
+        parentNode.opacity(1.0);
+        parentNode.draggable(true);
+        parentNode.listening(true);
+      }
+
+      // Clear grid clipping and transform bounds
+      this.managers.gridManager.clearClipBounds();
+      this.managers.transformManager.setParentBounds(null);
+    }
 
     // Could archive or hide layer here if needed
   }
@@ -154,8 +184,8 @@ export class StepOrchestrator {
   /**
    * Save current step
    */
-  private saveStep(): void {
-    StepHandlers.saveStep(
+  private async saveStep(): Promise<void> {
+    await StepHandlers.saveStep(
       this.currentStepConfig,
       this.currentState,
       this.managers
@@ -165,10 +195,10 @@ export class StepOrchestrator {
   }
 
   /**
-   * Load saved home area from localStorage
+   * Load saved home area from storage
    */
-  loadHomeArea(): boolean {
-    const loaded = StepHandlers.loadHomeArea(
+  async loadHomeArea(): Promise<boolean> {
+    const loaded = await StepHandlers.loadHomeArea(
       this.currentStepConfig,
       this.currentState,
       this.managers
@@ -179,12 +209,70 @@ export class StepOrchestrator {
   }
 
   /**
-   * Transition to next step (future)
+   * Load saved child areas from storage for current parent
+   */
+  async loadChildAreas(): Promise<boolean> {
+    const loaded = await StepHandlers.loadChildAreas(
+      this.currentStepConfig,
+      this.currentState,
+      this.managers
+    );
+
+    this.notifyStepChange();
+    return loaded;
+  }
+
+  /**
+   * Restore full state from persistence
+   * This loads home area, checks saved step, and transitions to that step
+   */
+  async restoreState(): Promise<boolean> {
+    const pm = this.managers.persistenceManager;
+    if (!pm) {
+      console.error('StepOrchestrator: PersistenceManager not available');
+      return false;
+    }
+
+    // First, load the home area (Step 1)
+    const homeLoaded = await this.loadHomeArea();
+    if (!homeLoaded) {
+      console.log('StepOrchestrator: No saved state to restore');
+      return false;
+    }
+
+    // Check what step we were on
+    const savedStep = await pm.getSavedStep();
+    console.log('StepOrchestrator: Saved step was', savedStep);
+
+    // If saved step was 2+, transition to that step
+    if (savedStep >= 2 && this.currentState.primaryShapeId) {
+      // Mark Step 1 as saved (it was already saved)
+      this.currentState.isSaved = true;
+
+      // Transition to Step 2 - this will also load child areas
+      await this.createChildAreaStep();
+
+      console.log('StepOrchestrator: Restored to Step', savedStep);
+    }
+
+    this.notifyStepChange();
+    return true;
+  }
+
+  /**
+   * Transition to next step
    */
   transitionToNextStep(): void {
     const nextOrder = this.currentStepConfig.step.order + 1;
-    const nextConfig = this.stepConfigs.get(nextOrder);
 
+    // Special handling for Step 1 -> Step 2 (child area creation)
+    if (this.currentStepConfig.step.order === 1 && nextOrder === 2) {
+      this.createChildAreaStep();
+      return;
+    }
+
+    // Generic handling for future steps
+    const nextConfig = this.stepConfigs.get(nextOrder);
     if (nextConfig) {
       this.exitStep(this.currentStepConfig);
       this.currentStepConfig = nextConfig;
@@ -199,9 +287,87 @@ export class StepOrchestrator {
   }
 
   /**
+   * Create child area step (Step 2) with parent context
+   */
+  private async createChildAreaStep(): Promise<void> {
+    if (!this.currentState.primaryShapeId) {
+      console.warn('Cannot create child area step: no primary shape');
+      return;
+    }
+
+    const parentShape = this.managers.shapeManager.getShape(this.currentState.primaryShapeId);
+    if (!parentShape) {
+      console.warn('Cannot create child area step: parent shape not found');
+      return;
+    }
+
+    const parentAreaId = this.managers.areaManager.findAreaByShapeId(this.currentState.primaryShapeId);
+    if (!parentAreaId) {
+      console.warn('Cannot create child area step: parent area not found');
+      return;
+    }
+
+    // Configure Step 2 with parent context
+    const step2Config: StepConfiguration = {
+      step: createStep('AREA'),
+      layerId: 'layer_2',
+      shapeType: 'rectangle',
+      shapeDefaults: {
+        label: 'Area',
+        fill: SHAPE_COLORS.AREA_FILL,
+        stroke: SHAPE_COLORS.AREA_STROKE,
+      },
+      rules: {
+        maxShapes: Infinity,
+        requiresSelection: false,
+        canDelete: true,
+        requiresExplicitCreate: true,  // Must click "Create Area" before creating
+      },
+      parentContext: {
+        parentAreaId,
+        parentShapeId: this.currentState.primaryShapeId,
+        parentBounds: {
+          x: parentShape.x,
+          y: parentShape.y,
+          width: parentShape.width,
+          height: parentShape.height,
+        },
+      },
+    };
+
+    // Save parent shape ID before resetting state
+    const parentShapeId = this.currentState.primaryShapeId;
+
+    this.stepConfigs.set(2, step2Config);
+    this.exitStep(this.currentStepConfig);
+    this.currentStepConfig = step2Config;
+    this.currentState = {
+      shapeIds: [],
+      selectedShapeId: null,
+      primaryShapeId: null,
+      isSaved: false,
+      parentAreaId,
+      parentShapeId,
+    };
+    this.enterStep(step2Config);
+
+    // Load any saved child areas for this parent
+    await this.loadChildAreas();
+  }
+
+  /**
    * Get current step information for UI
    */
   getCurrentStepInfo(): StepInfo {
+    // Get selected shape's current label/name
+    let selectedShapeName: string | null = null;
+    if (this.currentState.selectedShapeId) {
+      const shape = this.managers.shapeManager.getShape(this.currentState.selectedShapeId);
+      if (shape) {
+        selectedShapeName = shape.label || '';
+      }
+    }
+
     return {
       step: this.currentStepConfig.step,
       description: StepHandlers.getDescription(
@@ -215,10 +381,51 @@ export class StepOrchestrator {
           onDelete: (shapeId) => this.deleteShape(shapeId),
           onSave: () => this.saveStep(),
           onNextStep: () => this.transitionToNextStep(),
+          onEnableCreationMode: () => this.enableCreationMode(),
         }
       ),
       selectedShapeId: this.currentState.selectedShapeId,
+      pendingAreaName: this.currentState.pendingAreaName || null,
+      selectedShapeName,
+      parentAreaId: this.currentState.parentAreaId || null,
     };
+  }
+
+  /**
+   * Save area name (exposed to UI)
+   */
+  saveAreaName(areaId: string, name: string): void {
+    StepHandlers.saveAreaName(
+      areaId,
+      name,
+      this.currentState,
+      this.managers
+    );
+
+    this.notifyStepChange();
+  }
+
+  /**
+   * Save shape label/name (exposed to UI)
+   */
+  saveShapeLabel(shapeId: string, label: string): void {
+    StepHandlers.saveShapeLabel(
+      shapeId,
+      label,
+      this.currentState,
+      this.managers
+    );
+
+    this.notifyStepChange();
+  }
+
+  /**
+   * Enable creation mode (exposed to UI)
+   * Used when "Create Area" button is clicked in steps that require explicit creation
+   */
+  enableCreationMode(): void {
+    this.currentState.isCreationMode = true;
+    this.notifyStepChange();
   }
 
   /**

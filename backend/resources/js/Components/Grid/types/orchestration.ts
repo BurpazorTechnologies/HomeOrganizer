@@ -41,6 +41,9 @@ export interface StepInfo {
   description: string;
   actions: ToolbarAction[];
   selectedShapeId?: string | null;
+  pendingAreaName?: { areaId: string; shapeId: string } | null;
+  selectedShapeName?: string | null;
+  parentAreaId?: string | null; // Parent area ID for Step 2+
 }
 
 /**
@@ -52,6 +55,22 @@ export interface ManagerInstances {
   labelManager: any;
   gridManager: any;
   layerManager: any;
+  areaManager: any;
+  persistenceManager?: any; // Optional - for save/load operations
+}
+
+/**
+ * Parent context for nested area creation
+ */
+export interface ParentContext {
+  parentAreaId: string;
+  parentShapeId: string;
+  parentBounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 /**
@@ -72,7 +91,9 @@ export interface StepConfiguration {
     maxShapes: number;                 // How many shapes allowed (1 for home, Infinity for rooms)
     requiresSelection: boolean;        // Must select before creating more?
     canDelete: boolean;                // Can delete shapes?
+    requiresExplicitCreate?: boolean;  // Requires "Create Area" button click before creating
   };
+  parentContext?: ParentContext;       // Parent context for nested areas
 }
 
 /**
@@ -83,6 +104,13 @@ export interface StepState {
   selectedShapeId: string | null;      // Currently selected shape
   primaryShapeId: string | null;       // Main shape (for recentering)
   isSaved: boolean;                    // Whether the current work has been saved
+  parentAreaId?: string | null;        // Parent area ID for nested areas
+  parentShapeId?: string | null;       // Parent shape ID for nested areas
+  pendingAreaName?: {                  // Pending area name input
+    areaId: string;
+    shapeId: string;
+  } | null;
+  isCreationMode?: boolean;            // Whether we're in explicit creation mode (waiting for click to create)
 }
 
 /**

@@ -8,9 +8,10 @@ import { LabelManager } from '@/Components/Grid/core/LabelManager';
 import { StepOrchestrator } from '@/Components/Grid/core/StepOrchestrator';
 import { ZoomManager } from '@/Components/Grid/core/ZoomManager';
 import { LayerManager } from '@/Components/Grid/core/LayerManager';
+import { AreaManager } from '@/Components/Grid/core/AreaManager';
+import { PersistenceManager } from '@/Components/Grid/core/PersistenceManager';
 import { EVENT_TIMING } from '@/Components/Grid/types/constants';
 import type { StepInfo } from '@/Components/Grid/types/orchestration';
-import { localStorageService } from '@/Services/localStorage';
 // ==================== Props & Emits ====================
 interface Props {
     gridSize: number;
@@ -37,7 +38,7 @@ const containerRef = ref<HTMLDivElement | null>(null);
 // Konva instances
 let stage: Konva.Stage | null = null;
 let gridLayer: Konva.Layer | null = null;
-let shapeLayer: Konva.Layer | null = null;
+// Note: Shape layers are now managed by LayerManager - one layer per step
 
 // Manager instances
 let gridManager: GridManager | null = null;
@@ -46,6 +47,8 @@ let transformManager: TransformManager | null = null;
 let labelManager: LabelManager | null = null;
 let zoomManager: ZoomManager | null = null;
 let layerManager: LayerManager | null = null;
+let areaManager: AreaManager | null = null;
+let persistenceManager: PersistenceManager | null = null;
 
 // Step orchestrator
 let stepOrchestrator: StepOrchestrator | null = null;
@@ -74,19 +77,16 @@ function initializeCanvas(): void {
         draggable: props.isPanMode || false,
     });
 
-    // Create layers
+    // Create grid layer (shapes will be on step-specific layers managed by LayerManager)
     gridLayer = new Konva.Layer();
-    shapeLayer = new Konva.Layer();
-
     stage.add(gridLayer);
-    stage.add(shapeLayer);
 
     // Initialize managers
     initializeManagers();
 }
 
 function initializeManagers(): void {
-    if (!stage || !gridLayer || !shapeLayer) return;
+    if (!stage || !gridLayer) return;
 
     // Grid Manager
     gridManager = new GridManager(stage, gridLayer, {
@@ -100,24 +100,49 @@ function initializeManagers(): void {
     // Zoom Manager (initialize early so we can pass getZoomScale to other managers)
     zoomManager = new ZoomManager(stage);
 
+    // Layer Manager - needs stage to create Konva layers (must be created early)
+    layerManager = new LayerManager(stage);
+
     // Shape Manager - pass zoom scale getter for drag boundary calculation
-    shapeManager = new ShapeManager(stage, shapeLayer, {
+    shapeManager = new ShapeManager(stage, {
         gridSize: props.gridSize,
         snapEnabled: props.snapToGrid,
         getZoomScale: () => zoomManager?.getCurrentZoom() || 1.0,
     });
 
-    // Transform Manager
-    transformManager = new TransformManager(stage, shapeLayer, {
+    // Connect ShapeManager with LayerManager
+    shapeManager.setLayerManager(layerManager);
+
+    // Area Manager
+    areaManager = new AreaManager();
+
+    // Create a temporary layer for TransformManager and LabelManager
+    // These will use the current layer from LayerManager
+    const tempLayer = new Konva.Layer();
+    stage.add(tempLayer);
+
+    // Transform Manager - will be updated to use layer manager
+    transformManager = new TransformManager(stage, tempLayer, {
         gridSize: props.gridSize,
         snapEnabled: props.snapToGrid,
     });
 
-    // Label Manager
-    labelManager = new LabelManager(stage, shapeLayer);
+    // Label Manager - will be updated to use layer manager
+    labelManager = new LabelManager(stage, tempLayer);
 
-    // Layer Manager
-    layerManager = new LayerManager();
+    // Persistence Manager - handles save/load from different data sources
+    persistenceManager = new PersistenceManager();
+    persistenceManager.setManagers({
+        shapeManager,
+        layerManager,
+        areaManager,
+        labelManager,
+    });
+
+    // Listen to persistence data changes
+    persistenceManager.onDataChange(() => {
+        emitSavedDataChange();
+    });
 
     // Listen to zoom changes and emit to parent
     zoomManager.onZoomChange((zoom) => {
@@ -142,6 +167,8 @@ function initializeManagers(): void {
         labelManager,
         gridManager,
         layerManager,
+        areaManager,
+        persistenceManager,
     });
 
     // Listen to step changes and emit to parent
@@ -152,13 +179,18 @@ function initializeManagers(): void {
     // Setup event handlers
     setupEventHandlers();
 
-    // Load saved home area if exists
-    const loaded = stepOrchestrator.loadHomeArea();
-
-    // If loaded, center on the primary shape
-    if (loaded) {
-        focusOnSelectedShape();
-    }
+    // Restore full state from persistence (async)
+    // This loads home area, checks saved step, and transitions if needed
+    stepOrchestrator.restoreState().then((restored) => {
+        // If restored, center on the primary/selected shape
+        if (restored) {
+            focusOnSelectedShape();
+        }
+        // Emit step info after loading
+        emitStepChange();
+        // Emit saved data
+        emitSavedDataChange();
+    });
 
     // Emit initial step info
     emitStepChange();
@@ -193,8 +225,9 @@ function emitLayerChange(): void {
 /**
  * Emit saved data to parent
  */
-function emitSavedDataChange(): void {
-    const savedData = localStorageService.getData();
+async function emitSavedDataChange(): Promise<void> {
+    if (!persistenceManager) return;
+    const savedData = await persistenceManager.getCurrentData();
     emit('savedDataChange', savedData);
 }
 
@@ -202,7 +235,7 @@ function emitSavedDataChange(): void {
  * Setup event handlers for the stage
  */
 function setupEventHandlers(): void {
-    if (!stage || !stepOrchestrator || !shapeLayer) return;
+    if (!stage || !stepOrchestrator) return;
 
     // Click event - delegate to step orchestrator
     stage.on('click', (e) => {
@@ -219,8 +252,8 @@ function setupEventHandlers(): void {
         stepOrchestrator!.handleClick(e, stage!);
     });
 
-    // Listen to drag events to update labels
-    shapeLayer.on('dragend', (e) => {
+    // Listen to drag events on stage to update labels (bubbles up from shape layers)
+    stage.on('dragend', (e) => {
         const target = e.target;
         if (target.getClassName() === 'Rect') {
             const shapeId = target.id();
@@ -376,21 +409,41 @@ function focusOnSelectedShape(): void {
 }
 
 /**
- * Recenter to the current layer's primary shape
+ * Recenter to the selected shape (or primary shape if none selected)
  * Used when user pans too far and needs to find their way back
  */
 function recenterToLayer(): void {
-    if (!shapeManager || !zoomManager || !layerManager || !gridManager) return;
+    if (!shapeManager || !zoomManager || !stepOrchestrator || !gridManager) return;
 
-    // Get the primary shape ID from current layer
-    const primaryShapeId = layerManager.getCurrentPrimaryShapeId();
-    if (!primaryShapeId) return;
+    // Get the step info to find selected or primary shape
+    const stepInfo = stepOrchestrator.getCurrentStepInfo();
+
+    // Prefer selected shape, fallback to primary shape from step state
+    const shapeIdToCenter = stepInfo.selectedShapeId || stepOrchestrator['currentState']?.primaryShapeId;
+
+    if (!shapeIdToCenter) {
+        // If no selected or primary shape, try the layer's primary shape
+        const primaryShapeId = layerManager?.getCurrentPrimaryShapeId();
+        if (!primaryShapeId) return;
+
+        const shape = shapeManager.getShape(primaryShapeId);
+        if (!shape) return;
+
+        zoomManager.focusOnShape({
+            x: shape.x,
+            y: shape.y,
+            width: shape.width,
+            height: shape.height,
+        });
+        gridManager.redrawGrid();
+        return;
+    }
 
     // Get the shape data
-    const shape = shapeManager.getShape(primaryShapeId);
+    const shape = shapeManager.getShape(shapeIdToCenter);
     if (!shape) return;
 
-    // Focus on the primary shape
+    // Focus on the shape
     zoomManager.focusOnShape({
         x: shape.x,
         y: shape.y,
@@ -402,6 +455,20 @@ function recenterToLayer(): void {
     gridManager.redrawGrid();
 }
 
+/**
+ * Save area name (exposed to parent)
+ */
+function saveAreaName(areaId: string, name: string): void {
+    stepOrchestrator?.saveAreaName(areaId, name);
+}
+
+/**
+ * Save shape label (exposed to parent)
+ */
+function saveShapeLabel(shapeId: string, label: string): void {
+    stepOrchestrator?.saveShapeLabel(shapeId, label);
+}
+
 // Expose methods to parent component
 defineExpose({
     zoomIn,
@@ -410,6 +477,8 @@ defineExpose({
     getCurrentZoom,
     focusOnSelectedShape,
     recenterToLayer,
+    saveAreaName,
+    saveShapeLabel,
 });
 
 // ==================== Watch Pan Mode ====================

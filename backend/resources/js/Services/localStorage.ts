@@ -7,26 +7,53 @@
 
 const STORAGE_KEY = 'home_organizer_data';
 
+export interface ShapeData {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fill: string;
+  stroke: string;
+  label: string;
+}
+
+export interface ChildAreaData {
+  parentAreaId: string;
+  parentShapeId: string;
+  stepId: string;
+  layerId: string;
+  shapes: ShapeData[];
+}
+
 export interface SavedData {
   version: string;
   lastUpdated: string;
+  currentStep?: number; // Track which step we're on
   homeArea?: {
     stepId: string;
     layerId: string;
-    shapes: Array<{
-      id: string;
-      type: string;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      fill: string;
-      stroke: string;
-      label: string;
-    }>;
+    shapes: ShapeData[];
     primaryShapeId: string | null;
   };
-  areas?: any[]; // Future: nested areas
+  childAreas?: {
+    [parentAreaId: string]: ChildAreaData;
+  };
+  areas?: {
+    areas: Array<{
+      id: string;
+      type: string;
+      label: string;
+      shapeId: string;
+      layerId: string;
+      parentId: string | null;
+      childIds: string[];
+      depth: number;
+      metadata: Record<string, any>;
+    }>;
+    rootAreaId: string;
+  };
   metadata?: {
     [key: string]: any;
   };
@@ -85,11 +112,69 @@ class LocalStorageService {
   }
 
   /**
+   * Save area hierarchy data
+   */
+  saveAreas(areasData: SavedData['areas']): void {
+    this.saveData({ areas: areasData });
+  }
+
+  /**
+   * Get area hierarchy data
+   */
+  getAreas(): SavedData['areas'] | null {
+    const data = this.getData();
+    return data?.areas || null;
+  }
+
+  /**
+   * Save child areas for a parent
+   */
+  saveChildAreas(parentAreaId: string, childAreaData: ChildAreaData): void {
+    const existingData = this.getData() || {} as SavedData;
+    const childAreas = existingData.childAreas || {};
+    childAreas[parentAreaId] = childAreaData;
+    this.saveData({ childAreas });
+  }
+
+  /**
+   * Get child areas for a parent
+   */
+  getChildAreas(parentAreaId: string): ChildAreaData | null {
+    const data = this.getData();
+    return data?.childAreas?.[parentAreaId] || null;
+  }
+
+  /**
+   * Get all child areas
+   */
+  getAllChildAreas(): SavedData['childAreas'] | null {
+    const data = this.getData();
+    return data?.childAreas || null;
+  }
+
+  /**
+   * Save current step
+   */
+  saveCurrentStep(stepNumber: number): void {
+    this.saveData({ currentStep: stepNumber });
+  }
+
+  /**
+   * Get current step
+   */
+  getCurrentStep(): number {
+    const data = this.getData();
+    return data?.currentStep || 1;
+  }
+
+  /**
    * Clear all data
    */
   clear(): void {
     try {
       localStorage.removeItem(STORAGE_KEY);
+      // Dispatch event to notify listeners
+      window.dispatchEvent(new CustomEvent('homeOrganizerDataChanged', { detail: null }));
     } catch (error) {
       console.error('Error clearing localStorage:', error);
     }

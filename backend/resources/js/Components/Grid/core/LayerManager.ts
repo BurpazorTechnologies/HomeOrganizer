@@ -5,18 +5,39 @@
  * Each step has its own layer that contains shapes.
  */
 
+import Konva from 'konva';
 import type { Layer } from '@/Components/Grid/types/layers';
 import type { Step } from '@/Components/Grid/types/steps';
 
 export class LayerManager {
   private layers: Map<string, Layer> = new Map();
   private currentLayerId: string | null = null;
+  private stage: Konva.Stage;
+
+  constructor(stage: Konva.Stage) {
+    this.stage = stage;
+  }
 
   /**
    * Create a new layer for a step
    */
   createLayer(step: Step): Layer {
     const layerId = `layer_${step.order}`;
+
+    // Check if layer already exists
+    const existingLayer = this.layers.get(layerId);
+    if (existingLayer) {
+      this.currentLayerId = layerId;
+      return existingLayer;
+    }
+
+    // Create a new Konva.Layer
+    const konvaLayer = new Konva.Layer({
+      id: layerId,
+    });
+
+    // Add to stage
+    this.stage.add(konvaLayer);
 
     const layer: Layer = {
       id: layerId,
@@ -25,6 +46,7 @@ export class LayerManager {
       label: step.label,
       shapeIds: [],
       primaryShapeId: null,
+      konvaLayer,
     };
 
     this.layers.set(layerId, layer);
@@ -41,11 +63,27 @@ export class LayerManager {
   }
 
   /**
+   * Get Konva.Layer instance by ID
+   */
+  getKonvaLayer(layerId: string): Konva.Layer | null {
+    const layer = this.layers.get(layerId);
+    return layer?.konvaLayer || null;
+  }
+
+  /**
    * Get current layer
    */
   getCurrentLayer(): Layer | null {
     if (!this.currentLayerId) return null;
     return this.layers.get(this.currentLayerId) || null;
+  }
+
+  /**
+   * Get current Konva.Layer instance
+   */
+  getCurrentKonvaLayer(): Konva.Layer | null {
+    if (!this.currentLayerId) return null;
+    return this.getKonvaLayer(this.currentLayerId);
   }
 
   /**

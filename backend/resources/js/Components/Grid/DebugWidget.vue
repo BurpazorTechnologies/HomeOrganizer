@@ -17,6 +17,8 @@ interface Props {
   selectedShapeId?: string | null;
   layers?: any[];
   savedData?: any; // Saved data from localStorage
+  currentStep?: number; // Current step number
+  parentAreaId?: string | null; // Current parent area (for Step 2+)
 }
 
 const props = defineProps<Props>();
@@ -61,6 +63,76 @@ const formatJSON = (obj: any): string => {
   if (!obj) return '{}';
   return JSON.stringify(obj, null, 2);
 };
+
+/**
+ * Get filtered localStorage data based on current context
+ * - Shows empty if no shapes exist globally
+ * - Shows only relevant data for current step/selection
+ */
+const getFilteredSavedData = computed(() => {
+  const data = props.savedData;
+
+  // If no data at all, show empty
+  if (!data) {
+    return null;
+  }
+
+  // Check if there are any shapes globally
+  const hasHomeArea = data.homeArea?.shapes?.length > 0;
+  const hasChildAreas = data.childAreas && Object.keys(data.childAreas).length > 0;
+
+  if (!hasHomeArea && !hasChildAreas) {
+    return null;
+  }
+
+  // Build filtered view based on current step
+  const currentStep = props.currentStep || 1;
+  const filtered: any = {
+    currentStep,
+    lastUpdated: data.lastUpdated,
+  };
+
+  // Step 1: Show home area data
+  if (currentStep === 1 && data.homeArea) {
+    filtered.homeArea = data.homeArea;
+  }
+
+  // Step 2+: Show child areas for current parent
+  if (currentStep >= 2 && props.parentAreaId) {
+    filtered.parentAreaId = props.parentAreaId;
+    if (data.childAreas?.[props.parentAreaId]) {
+      filtered.childAreas = {
+        [props.parentAreaId]: data.childAreas[props.parentAreaId]
+      };
+    }
+  }
+
+  // If a specific shape is selected, show that shape's data
+  if (props.selectedShapeId) {
+    // Find the shape in home area
+    if (data.homeArea?.shapes) {
+      const homeShape = data.homeArea.shapes.find((s: any) => s.id === props.selectedShapeId);
+      if (homeShape) {
+        filtered.selectedShape = homeShape;
+      }
+    }
+
+    // Find the shape in child areas
+    if (data.childAreas) {
+      for (const parentId of Object.keys(data.childAreas)) {
+        const childArea = data.childAreas[parentId];
+        const childShape = childArea.shapes?.find((s: any) => s.id === props.selectedShapeId);
+        if (childShape) {
+          filtered.selectedShape = childShape;
+          filtered.selectedShapeParent = parentId;
+          break;
+        }
+      }
+    }
+  }
+
+  return filtered;
+});
 
 // Calculate grid coordinates from pixel position
 const getGridCoordinates = (pixelX: number, pixelY: number) => {
@@ -211,11 +283,15 @@ const getGridAreaDimensions = () => {
           </div>
         </div>
 
-        <!-- Saved Data (LocalStorage) -->
-        <div v-if="savedData" class="pt-1.5 border-t border-gray-100">
+        <!-- Saved Data (LocalStorage) - Filtered to current context -->
+        <div class="pt-1.5 border-t border-gray-100">
           <div class="flex items-center justify-between mb-0.5">
-            <div class="text-[10px] text-gray-500">LocalStorage Data:</div>
+            <div class="text-[10px] text-gray-500">
+              LocalStorage Data:
+              <span v-if="currentStep" class="text-purple-500">(Step {{ currentStep }})</span>
+            </div>
             <button
+              v-if="getFilteredSavedData"
               @click="toggleSavedData"
               class="text-gray-400 hover:text-gray-600 transition-colors"
               type="button"
@@ -233,8 +309,11 @@ const getGridAreaDimensions = () => {
             </button>
           </div>
 
-          <div v-show="!savedDataCollapsed" class="mt-1">
-            <pre class="text-[8px] font-mono text-gray-700 bg-gray-50 p-2 rounded border border-gray-200 overflow-auto max-h-48">{{ formatJSON(savedData) }}</pre>
+          <div v-if="getFilteredSavedData" v-show="!savedDataCollapsed" class="mt-1">
+            <pre class="text-[8px] font-mono text-gray-700 bg-gray-50 p-2 rounded border border-gray-200 overflow-auto max-h-48">{{ formatJSON(getFilteredSavedData) }}</pre>
+          </div>
+          <div v-else class="text-[9px] text-gray-400 italic mt-1">
+            No saved data (empty)
           </div>
         </div>
 

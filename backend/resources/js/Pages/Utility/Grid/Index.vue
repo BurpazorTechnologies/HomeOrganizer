@@ -21,6 +21,8 @@ const currentStep = ref<Step>(DEFAULT_STEP);
 const stepDescription = ref<string>('');
 const stepActions = ref<ToolbarAction[]>([]);
 const selectedShapeId = ref<string | null>(null);
+const pendingAreaName = ref<{ areaId: string; shapeId: string } | null>(null);
+const selectedShapeName = ref<string | null>(null);
 
 // Zoom state
 const currentZoom = ref<number>(1.0);
@@ -53,12 +55,28 @@ const handleSavedDataChange = (data: any) => {
     savedData.value = data;
 };
 
+// Parent area ID for Step 2+
+const parentAreaId = ref<string | null>(null);
+
 // Handle step changes from canvas
 const handleStepChange = (stepInfo: StepInfo) => {
     currentStep.value = stepInfo.step;
     stepDescription.value = stepInfo.description;
     stepActions.value = stepInfo.actions;
     selectedShapeId.value = stepInfo.selectedShapeId || null;
+    pendingAreaName.value = stepInfo.pendingAreaName || null;
+    selectedShapeName.value = stepInfo.selectedShapeName || null;
+    parentAreaId.value = stepInfo.parentAreaId || null;
+};
+
+// Handle area name save
+const handleSaveAreaName = (payload: { areaId: string; name: string }) => {
+    canvasRef.value?.saveAreaName(payload.areaId, payload.name);
+};
+
+// Handle shape label save
+const handleSaveShapeLabel = (payload: { shapeId: string; label: string }) => {
+    canvasRef.value?.saveShapeLabel(payload.shapeId, payload.label);
 };
 
 // Handle zoom changes from canvas
@@ -109,11 +127,16 @@ const handleRecenter = () => {
             :actions="stepActions"
             :current-zoom="currentZoom"
             :is-pan-mode="isPanMode"
+            :pending-area-name="pendingAreaName"
+            :selected-shape-id="selectedShapeId"
+            :selected-shape-name="selectedShapeName"
             @zoom-in="handleZoomIn"
             @zoom-out="handleZoomOut"
             @reset-zoom="handleResetZoom"
             @toggle-pan="handleTogglePan"
             @recenter="handleRecenter"
+            @save-area-name="handleSaveAreaName"
+            @save-shape-label="handleSaveShapeLabel"
         />
 
         <!-- Debug Widget - Only shows in development mode -->
@@ -126,6 +149,8 @@ const handleRecenter = () => {
             :selected-shape-id="selectedShapeId"
             :layers="layers"
             :saved-data="savedData"
+            :current-step="currentStep.order"
+            :parent-area-id="parentAreaId"
         />
 
         <!-- Main Canvas -->

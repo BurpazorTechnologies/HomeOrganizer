@@ -3,10 +3,18 @@ import Konva from 'konva';
 import { GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 import type { VisibleBounds, GridConfig } from '@/Components/Grid/types/grid';
 
+interface Bounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export class GridManager {
   private layer: Konva.Layer;
   private stage: Konva.Stage;
   private config: GridConfig;
+  private clipBounds: Bounds | null = null;
 
   constructor(stage: Konva.Stage, layer: Konva.Layer, config?: Partial<GridConfig>) {
     this.stage = stage;
@@ -110,7 +118,41 @@ export class GridManager {
   }
 
   /**
-   * 
+   * Set clip bounds to limit grid drawing to a specific area
+   *
+   * @param bounds - The bounding box to clip grid to, or null to remove clipping
+   */
+  setClipBounds(bounds: Bounds | null): void {
+    this.clipBounds = bounds;
+    this.redrawGrid();
+  }
+
+  /**
+   * Clear clip bounds and restore full grid
+   */
+  clearClipBounds(): void {
+    this.clipBounds = null;
+    this.redrawGrid();
+  }
+
+  /**
+   * Intersect visible bounds with clip bounds
+   *
+   * @param visible - The currently visible bounds
+   * @param clip - The clip bounds to intersect with
+   * @returns The intersection of visible and clip bounds
+   */
+  private intersectBounds(visible: VisibleBounds, clip: Bounds): VisibleBounds {
+    return {
+      startX: Math.max(visible.startX, clip.x),
+      endX: Math.min(visible.endX, clip.x + clip.width),
+      startY: Math.max(visible.startY, clip.y),
+      endY: Math.min(visible.endY, clip.y + clip.height),
+    };
+  }
+
+  /**
+   *
    * Redraw the entire grid
    *
    * This is the main method called when the grid needs to update
@@ -126,7 +168,13 @@ export class GridManager {
     this.clearGrid();
 
     // Calculate visible bounds
-    const bounds = this.getVisibleBounds();
+    let bounds = this.getVisibleBounds();
+
+    // Apply clipping if set
+    if (this.clipBounds) {
+      bounds = this.intersectBounds(bounds, this.clipBounds);
+    }
+
     console.log(bounds);
     // Draw new grid lines
     this.drawVerticalLines(bounds);

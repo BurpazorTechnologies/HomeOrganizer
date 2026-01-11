@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import type { Shape, RectangleShape } from '@/Components/Grid/types/shapes';
 import { SHAPE_COLORS, GRID_CONSTANTS } from '@/Components/Grid/types/constants';
+import type { LayerManager } from '@/Components/Grid/core/LayerManager';
 
 /**
  * ShapeManager
@@ -9,19 +10,19 @@ import { SHAPE_COLORS, GRID_CONSTANTS } from '@/Components/Grid/types/constants'
  * - Creates and tracks shape instances
  * - Handles shape rendering
  * - Manages shape state and selection
+ * - Works with LayerManager to place shapes on correct layers
  */
 export class ShapeManager {
     private stage: Konva.Stage;
-    private layer: Konva.Layer;
-    private shapes: Map<string, { data: Shape; node: Konva.Shape }> = new Map();
+    private shapes: Map<string, { data: Shape; node: Konva.Shape; layerId: string }> = new Map();
     private selectedShapeId: string | null = null;
     private gridSize: number;
     private snapEnabled: boolean;
     private getZoomScale: () => number;
+    private layerManager: LayerManager | null = null;
 
     constructor(
         stage: Konva.Stage,
-        layer: Konva.Layer,
         options: {
             gridSize: number;
             snapEnabled: boolean;
@@ -29,10 +30,16 @@ export class ShapeManager {
         }
     ) {
         this.stage = stage;
-        this.layer = layer;
         this.gridSize = options.gridSize;
         this.snapEnabled = options.snapEnabled;
         this.getZoomScale = options.getZoomScale || (() => 1.0);
+    }
+
+    /**
+     * Set LayerManager reference
+     */
+    setLayerManager(layerManager: LayerManager): void {
+        this.layerManager = layerManager;
     }
 
     /**
@@ -47,6 +54,13 @@ export class ShapeManager {
             fill?: string;
             stroke?: string;
             label?: string;
+            layerId?: string;
+            parentBounds?: {
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+            };
         }
     ): RectangleShape {
         const id = `shape_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -84,10 +98,6 @@ export class ShapeManager {
             dragBoundFunc: (pos) => {
                 const zoomScale = this.getZoomScale();
 
-                // Calculate visible area based on zoom
-                const stageWidth = this.stage.width() / zoomScale;
-                const stageHeight = this.stage.height() / zoomScale;
-
                 // Get shape dimensions
                 const shapeWidth = rect.width() * rect.scaleX();
                 const shapeHeight = rect.height() * rect.scaleY();
@@ -96,9 +106,18 @@ export class ShapeManager {
                 let newX = pos.x;
                 let newY = pos.y;
 
-                // Constrain to canvas boundaries (accounting for zoom)
-                newX = Math.max(0, Math.min(newX, stageWidth - shapeWidth));
-                newY = Math.max(0, Math.min(newY, stageHeight - shapeHeight));
+                // Parent bounds constraint (takes priority if provided)
+                if (options?.parentBounds) {
+                    const parent = options.parentBounds;
+                    newX = Math.max(parent.x, Math.min(newX, parent.x + parent.width - shapeWidth));
+                    newY = Math.max(parent.y, Math.min(newY, parent.y + parent.height - shapeHeight));
+                } else {
+                    // Constrain to canvas boundaries (accounting for zoom)
+                    const stageWidth = this.stage.width() / zoomScale;
+                    const stageHeight = this.stage.height() / zoomScale;
+                    newX = Math.max(0, Math.min(newX, stageWidth - shapeWidth));
+                    newY = Math.max(0, Math.min(newY, stageHeight - shapeHeight));
+                }
 
                 // Apply grid snapping if enabled
                 if (this.snapEnabled) {
@@ -120,12 +139,21 @@ export class ShapeManager {
             shapeData.y = newY;
         });
 
-        // Store shape
-        this.shapes.set(id, { data: shapeData, node: rect });
+        // Get the appropriate layer - use current layer if layerId not provided
+        const layerId = options?.layerId || this.layerManager?.getCurrentLayer()?.id || 'layer_1';
+        const konvaLayer = this.layerManager?.getKonvaLayer(layerId);
 
-        // Add to layer
-        this.layer.add(rect);
-        this.layer.batchDraw();
+        if (!konvaLayer) {
+            console.error(`Layer ${layerId} not found!`);
+            throw new Error(`Layer ${layerId} not found`);
+        }
+
+        // Store shape with layer reference
+        this.shapes.set(id, { data: shapeData, node: rect, layerId });
+
+        // Add to the correct Konva layer
+        konvaLayer.add(rect);
+        konvaLayer.batchDraw();
 
         return shapeData;
     }
@@ -152,7 +180,9 @@ export class ShapeManager {
         if (dimensions.width !== undefined) shape.node.width(dimensions.width);
         if (dimensions.height !== undefined) shape.node.height(dimensions.height);
 
-        this.layer.batchDraw();
+        // Redraw the shape's layer
+        const konvaLayer = this.layerManager?.getKonvaLayer(shape.layerId);
+        konvaLayer?.batchDraw();
     }
 
     /**
@@ -237,7 +267,9 @@ export class ShapeManager {
             this.selectedShapeId = null;
         }
 
-        this.layer.batchDraw();
+        // Redraw the shape's layer
+        const konvaLayer = this.layerManager?.getKonvaLayer(shape.layerId);
+        konvaLayer?.batchDraw();
     }
 
     /**
@@ -254,9 +286,17 @@ export class ShapeManager {
      * Clear all shapes
      */
     clear(): void {
+        // Get unique layer IDs before clearing
+        const layerIds = new Set(Array.from(this.shapes.values()).map(s => s.layerId));
+
         this.shapes.forEach(({ node }) => node.destroy());
         this.shapes.clear();
         this.selectedShapeId = null;
-        this.layer.batchDraw();
+
+        // Redraw all affected layers
+        layerIds.forEach(layerId => {
+            const konvaLayer = this.layerManager?.getKonvaLayer(layerId);
+            konvaLayer?.batchDraw();
+        });
     }
 }

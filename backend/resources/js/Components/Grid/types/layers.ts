@@ -6,6 +6,7 @@
  */
 
 import type { Step } from './steps';
+import type Konva from 'konva';
 
 /**
  * Layer definition
@@ -17,6 +18,7 @@ export interface Layer {
   label: string;
   shapeIds: string[];
   primaryShapeId: string | null; // The main/first shape created in this layer
+  konvaLayer: Konva.Layer; // The actual Konva.Layer instance for rendering
 }
 
 /**
