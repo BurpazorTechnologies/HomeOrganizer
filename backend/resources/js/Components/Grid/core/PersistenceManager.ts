@@ -268,7 +268,7 @@ export class PersistenceManager {
 
     // Recreate each shape
     for (let i = 0; i < homeArea.shapes.length; i++) {
-      const shapeData = homeArea.shapes[i];
+      const shapeData = homeArea.shapes[i] as any; // Cast to access potential area fields
       const isPrimary = shapeData.id === homeArea.primaryShapeId || i === 0;
 
       const shape = this.managers.shapeManager.createRectangle(
@@ -283,11 +283,16 @@ export class PersistenceManager {
           width: shapeData.width,
           height: shapeData.height,
           layerId,
+          // Unified model: restore area fields if present
+          areaType: shapeData.areaType ?? (isPrimary ? 'home' : null),
+          childShapeIds: shapeData.childShapeIds ?? [],
+          depth: shapeData.depth ?? 0,
+          parentShapeId: shapeData.parentShapeId ?? null,
         }
       );
 
-      // Add to layer
-      this.managers.layerManager.addShapeToLayer(layerId, shape.id, isPrimary);
+      // Add to layer (pass shapeManager to apply lock state if layer is locked)
+      this.managers.layerManager.addShapeToLayer(layerId, shape.id, isPrimary, this.managers.shapeManager);
 
       // Create label - if shape has a saved label, use area name label; otherwise dimension label
       if (shapeData.label && shapeData.label.trim()) {
@@ -345,8 +350,13 @@ export class PersistenceManager {
 
     // Recreate each shape
     for (let i = 0; i < childAreaData.shapes.length; i++) {
-      const shapeData = childAreaData.shapes[i];
+      const shapeData = childAreaData.shapes[i] as any; // Cast to access potential area fields
       const isPrimary = i === 0;
+
+      // Get parent depth for calculating child depth
+      const parentDepth = effectiveParentShapeId
+        ? (this.store?.getShape(effectiveParentShapeId)?.depth ?? 0)
+        : 0;
 
       const shape = this.managers.shapeManager.createRectangle(
         shapeData.x,
@@ -362,6 +372,10 @@ export class PersistenceManager {
           layerId,
           parentBounds, // Fallback for legacy code paths (deprecated)
           parentShapeId: effectiveParentShapeId, // For BoundsService live bounds (preferred)
+          // Unified model: restore area fields if present
+          areaType: shapeData.areaType ?? 'area',
+          childShapeIds: shapeData.childShapeIds ?? [],
+          depth: shapeData.depth ?? (parentDepth + 1),
         }
       );
 
@@ -381,8 +395,8 @@ export class PersistenceManager {
         });
       }
 
-      // Add to layer
-      this.managers.layerManager.addShapeToLayer(layerId, shape.id, isPrimary);
+      // Add to layer (pass shapeManager to apply lock state if layer is locked)
+      this.managers.layerManager.addShapeToLayer(layerId, shape.id, isPrimary, this.managers.shapeManager);
 
       // Create child area in AreaManager (only if not already restored from hierarchy)
       const childAreaId = `area_${shape.id}`;
@@ -475,6 +489,7 @@ export class PersistenceManager {
 
   /**
    * Serialize shapes from IDs
+   * Updated to include unified area fields for Phase E migration
    */
   private serializeShapes(shapeIds: string[]): ShapeData[] {
     if (!this.managers) return [];
@@ -485,6 +500,10 @@ export class PersistenceManager {
         console.warn('PersistenceManager: Shape not found', id);
         return null;
       }
+
+      // Get area fields from store if available
+      const storeShape = this.store?.getShape(id);
+
       return {
         id: shape.id,
         type: shape.type,
@@ -497,6 +516,11 @@ export class PersistenceManager {
         strokeWidth: shape.strokeWidth,
         label: shape.label || '',
         zIndex: shape.zIndex,
+        // Unified model: include area fields
+        areaType: storeShape?.areaType ?? null,
+        childShapeIds: storeShape?.childShapeIds ?? [],
+        depth: storeShape?.depth ?? 0,
+        parentShapeId: storeShape?.parentShapeId ?? null,
       };
     }).filter(Boolean) as ShapeData[];
   }

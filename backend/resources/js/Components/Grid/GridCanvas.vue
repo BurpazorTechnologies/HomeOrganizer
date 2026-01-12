@@ -1,8 +1,19 @@
 <script setup lang="ts">
+/**
+ * GridCanvas.vue
+ *
+ * Main canvas component that:
+ * 1. Creates and sizes the Konva stage
+ * 2. Initializes ManagerRegistry with dependencies
+ * 3. Delegates event handling to EventManager (via ManagerRegistry)
+ * 4. Emits events to parent (step changes, saves, etc.)
+ *
+ * Event handling is centralized in EventManager.
+ * Debug concerns are available via DebugToolbar (can be used standalone or via GridCanvasWithDebug wrapper).
+ */
 import Konva from 'konva';
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { ManagerRegistry } from '@/Components/Grid/core/ManagerRegistry';
-import { EVENT_TIMING } from '@/Components/Grid/types/constants';
 import type { StepInfo } from '@/Components/Grid/types/orchestration';
 import DebugToolbar from '@/Components/Grid/debug/DebugToolbar.vue';
 import { useDebugState } from '@/Components/Grid/debug/useDebugState';
@@ -24,6 +35,7 @@ interface Emits {
     (e: 'update:isPanMode', value: boolean): void;
     (e: 'layerChange', layers: any[]): void;
     (e: 'savedDataChange', savedData: any): void;
+    (e: 'registryReady'): void;
 }
 
 const props = defineProps<Props>();
@@ -35,17 +47,11 @@ const containerRef = ref<HTMLDivElement | null>(null);
 let registry: ManagerRegistry | null = null;
 
 // Debug state composable - provides aggregated state for DebugToolbar
-const { debugState, refresh: refreshDebugState } = useDebugState(() => registry);
+// Subscribes to store for automatic updates, with manual refresh for Konva state
+const { debugState, subscribeToStore, refresh: refreshDebugState } = useDebugState(() => registry);
 
-// Konva stage reference (kept separate for event handler access)
+// Konva stage reference (kept separate for direct access in watchers)
 let stage: Konva.Stage | null = null;
-
-// Wheel zoom throttle
-let wheelTimeout: NodeJS.Timeout | null = null;
-
-// Middle mouse button pan state
-let isMiddleButtonPanActive = false;
-let previousPanModeState = false;
 
 // Debug toolbar state
 const lastClickPosition = ref<{ x: number; y: number } | null>(null);
@@ -97,13 +103,26 @@ function initializeCanvas(): void {
         onTransform: () => {
             emitStepChange();
         },
+        onZoomEnd: () => {
+            // Ensure shapes are draggable after zoom (unless in pan mode)
+            if (!props.isPanMode) {
+                registry?.shapeManager.setShapesDraggable(true);
+            }
+        },
+        onClick: (position) => {
+            // Track last click position for debug toolbar
+            lastClickPosition.value = position;
+            emit('click', position);
+        },
     });
 
-    // Initialize all managers
-    registry.initialize(stage, gridLayer);
-
-    // Setup event handlers
-    setupEventHandlers();
+    // Initialize all managers with EventManager callbacks
+    // EventManager will handle all Konva events internally
+    registry.initialize(stage, gridLayer, {
+        getIsPanMode: () => props.isPanMode || false,
+        setIsPanMode: (value: boolean) => emit('update:isPanMode', value),
+        refreshDebugState: () => refreshDebugState(),
+    });
 
     // Restore state from persistence
     registry.restoreState().then((restored) => {
@@ -114,10 +133,14 @@ function initializeCanvas(): void {
         emitSavedDataChange();
     });
 
+    // Subscribe debug state to store changes for automatic updates
+    subscribeToStore();
+
     // Emit initial values
     emitStepChange();
     emit('zoomChange', registry.zoomManager.getCurrentZoom());
     emit('resize', stage.width(), stage.height());
+    emit('registryReady');
 }
 
 // ==================== Event Emitters ====================
@@ -128,7 +151,6 @@ function emitStepChange(): void {
     emit('stepChange', stepInfo);
     emitLayerChange();
     emitSavedDataChange();
-    refreshDebugState();
 }
 
 function emitLayerChange(): void {
@@ -142,80 +164,6 @@ async function emitSavedDataChange(): Promise<void> {
     const data = await registry.persistenceManager.getCurrentData();
     savedData.value = data;
     emit('savedDataChange', data);
-}
-
-// ==================== Event Handlers ====================
-
-function setupEventHandlers(): void {
-    if (!stage || !registry?.isInitialized) return;
-
-    // Click event - delegate to step orchestrator
-    stage.on('click', (e) => {
-        const pointer = stage!.getPointerPosition();
-        if (!pointer) return;
-
-        // Track last click position for debug toolbar
-        lastClickPosition.value = { x: pointer.x, y: pointer.y };
-
-        emit('click', { x: pointer.x, y: pointer.y });
-        registry!.stepOrchestrator.handleClick(e, stage!);
-    });
-
-    // Drag end - update labels
-    stage.on('dragend', (e) => {
-        const target = e.target;
-        if (target.getClassName() === 'Rect') {
-            const shapeId = target.id();
-            const shape = registry!.shapeManager.getShape(shapeId);
-            if (shape) {
-                registry!.labelManager.updateLabel(shapeId, {
-                    x: shape.x,
-                    y: shape.y,
-                    width: shape.width,
-                    height: shape.height,
-                });
-            }
-            emitStepChange();
-        }
-    });
-
-    // Mouse wheel zoom with throttle
-    stage.on('wheel', (e) => {
-        e.evt.preventDefault();
-
-        if (wheelTimeout) {
-            clearTimeout(wheelTimeout);
-        }
-
-        wheelTimeout = setTimeout(() => {
-            const delta = e.evt.deltaY;
-            registry!.zoomManager.zoomWheel(delta);
-        }, EVENT_TIMING.WHEEL_THROTTLE);
-    });
-
-    // Middle mouse button pan
-    stage.content.addEventListener('mousedown', (e: MouseEvent) => {
-        if (e.button === 1) {
-            e.preventDefault();
-            previousPanModeState = props.isPanMode || false;
-            isMiddleButtonPanActive = true;
-            stage!.draggable(true);
-            registry!.shapeManager.setShapesDraggable(false);
-            emit('update:isPanMode', true);
-        }
-    }, true);
-
-    stage.content.addEventListener('mouseup', (e: MouseEvent) => {
-        if (e.button === 1 && isMiddleButtonPanActive) {
-            e.preventDefault();
-            isMiddleButtonPanActive = false;
-            stage!.draggable(previousPanModeState);
-            if (!previousPanModeState) {
-                registry!.shapeManager.setShapesDraggable(true);
-            }
-            emit('update:isPanMode', previousPanModeState);
-        }
-    }, true);
 }
 
 // ==================== Window Resize Handler ====================
@@ -307,6 +255,10 @@ function saveShapeLabel(shapeId: string, label: string): void {
     registry.stepOrchestrator.saveShapeLabel(shapeId, label);
 }
 
+function getRegistry(): ManagerRegistry | null {
+    return registry;
+}
+
 // Expose methods to parent component
 defineExpose({
     zoomIn,
@@ -317,21 +269,18 @@ defineExpose({
     recenterToLayer,
     saveAreaName,
     saveShapeLabel,
+    getRegistry,
 });
 
 // ==================== Watchers ====================
 
 watch(() => props.isPanMode, (newValue, oldValue) => {
-    if (stage) {
+    // Delegate pan mode changes to EventManager
+    if (registry?.eventManager) {
+        registry.eventManager.handlePanModeChange(newValue || false, oldValue || false);
+    } else if (stage) {
+        // Fallback if EventManager not available
         stage.draggable(newValue || false);
-    }
-
-    if (registry?.isInitialized) {
-        registry.shapeManager.setShapesDraggable(!newValue);
-    }
-
-    if (oldValue === true && newValue === false) {
-        focusOnSelectedShape();
     }
 });
 
@@ -345,13 +294,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    if (wheelTimeout) {
-        clearTimeout(wheelTimeout);
-    }
     window.removeEventListener('resize', handleWindowResize);
     window.removeEventListener('homeOrganizerDataChanged', handleLocalStorageChange);
 
-    // Clean up registry
+    // Clean up registry (EventManager cleanup is handled internally)
     registry?.destroy();
     registry = null;
 });
@@ -371,12 +317,7 @@ function handleDebugReset(): void {
 function handleDebugClearMutations(): void {
     if (registry?.isInitialized) {
         registry.store.clearMutationHistory();
-        refreshDebugState();
     }
-}
-
-function handleDebugRefresh(): void {
-    refreshDebugState();
 }
 </script>
 
@@ -392,7 +333,7 @@ function handleDebugRefresh(): void {
         :saved-data="savedData"
         @reset="handleDebugReset"
         @clear-mutations="handleDebugClearMutations"
-        @refresh="handleDebugRefresh"
+        @refresh="refreshDebugState"
     />
 </template>
 

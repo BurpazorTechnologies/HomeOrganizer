@@ -13,10 +13,10 @@ export const GRID_CONSTANTS = {
 
   // Zoom settings
   DEFAULT_ZOOM: 1.0,            // 100%
-  MIN_ZOOM: 0.33,               // 33% - maximum zoom out
-  MAX_ZOOM: 5.0,                // 500% - maximum zoom in
-  ZOOM_STEP: 1.2,               // multiplier for zoom in/out
-  ZOOM_WHEEL_SENSITIVITY: 1.05, // mouse wheel zoom sensitivity
+  MIN_ZOOM: 0.25,               // 25% - maximum zoom out
+  MAX_ZOOM: 2.0,                // 200% - maximum zoom in
+  ZOOM_STEP: 0.25,              // Fixed increment: 25%, 50%, 75%, 100%, 125%, etc.
+  ZOOM_WHEEL_SENSITIVITY: 0.25, // mouse wheel uses same fixed increment
 
   // Shape settings
   MIN_SHAPE_SIZE: 40,           // minimum width/height in pixels

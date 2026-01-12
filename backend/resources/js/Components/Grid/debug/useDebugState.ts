@@ -3,9 +3,11 @@
  *
  * Aggregates state from all managers into a single DebugState object.
  * This is the data source for the DebugToolbar component.
+ *
+ * Automatically subscribes to store changes for reactive updates.
  */
 
-import { ref } from 'vue';
+import { ref, onUnmounted } from 'vue';
 import type { ManagerRegistry } from '../core/ManagerRegistry';
 import type {
   DebugState,
@@ -16,15 +18,19 @@ import type {
   GridConfigDebugState,
   KonvaNodeDebugInfo,
   LayerDebugState,
+  CoordinateSystemsDebugState,
 } from './types';
-import type { AreaState } from '../core/state/GridStateStore';
+import type { AreaState, ActionLockState } from '../core/state/GridStateStore';
 import type { MutationRecord } from '../core/state/MutationTracker';
 
 /**
  * Create the useDebugState composable
+ *
+ * Subscribes to the store for automatic updates when state changes.
  */
 export function useDebugState(getRegistry: () => ManagerRegistry | null) {
   const debugState = ref<DebugState | null>(null);
+  let unsubscribe: (() => void) | null = null;
 
   /**
    * Refresh the debug state by querying all managers
@@ -38,7 +44,9 @@ export function useDebugState(getRegistry: () => ManagerRegistry | null) {
 
     debugState.value = {
       timestamp: Date.now(),
+      actionLock: buildActionLockState(registry),
       viewport: buildViewportState(registry),
+      coordinates: buildCoordinatesState(registry),
       selection: buildSelectionState(registry),
       shapes: buildShapesState(registry),
       layers: buildLayersState(registry),
@@ -50,29 +58,144 @@ export function useDebugState(getRegistry: () => ManagerRegistry | null) {
     };
   }
 
+  /**
+   * Subscribe to store changes for automatic updates
+   * Call this after the registry is initialized
+   */
+  function subscribeToStore(): void {
+    const registry = getRegistry();
+    if (!registry?.isInitialized) return;
+
+    // Unsubscribe from previous subscription if any
+    if (unsubscribe) {
+      unsubscribe();
+    }
+
+    // Subscribe to store changes
+    unsubscribe = registry.store.subscribe(() => {
+      refresh();
+    });
+
+    // Initial refresh
+    refresh();
+  }
+
+  /**
+   * Cleanup subscription
+   */
+  function cleanup(): void {
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
+    }
+  }
+
+  // Auto-cleanup on component unmount
+  onUnmounted(() => {
+    cleanup();
+  });
+
   return {
     debugState,
     refresh,
+    subscribeToStore,
+    cleanup,
   };
 }
 
 // ==================== State Builders ====================
 
-function buildViewportState(registry: ManagerRegistry): ViewportDebugState {
-  const zoomManager = registry.zoomManager;
-  const stage = (registry as any)._stage;
+function buildActionLockState(registry: ManagerRegistry): ActionLockState {
+  const store = registry.store;
+  return store?.getActionLock?.() ?? { currentAction: 'idle', lockedBy: null };
+}
 
-  const zoom = zoomManager?.getCurrentZoom?.() ?? 1.0;
-  const position = stage?.position?.() ?? { x: 0, y: 0 };
+function buildViewportState(registry: ManagerRegistry): ViewportDebugState {
+  const store = registry.store;
+  const zoomManager = registry.zoomManager;
+  const stage = registry.stage;
+
+  // Read viewport state from centralized store
+  const viewport = store?.getViewport?.() ?? { zoom: 1.0, pan: { x: 0, y: 0 } };
+  const zoom = viewport.zoom;
 
   return {
     zoom,
     zoomPercentage: `${Math.round(zoom * 100)}%`,
-    pan: { x: Math.round(position.x), y: Math.round(position.y) },
-    canZoomIn: zoom < 1.0,
-    canZoomOut: zoom > 0.2,
+    pan: { x: Math.round(viewport.pan.x), y: Math.round(viewport.pan.y) },
+    canZoomIn: zoomManager?.canZoomIn?.() ?? zoom < 1.0,
+    canZoomOut: zoomManager?.canZoomOut?.() ?? zoom > 0.2,
     stageWidth: stage?.width?.() ?? 0,
     stageHeight: stage?.height?.() ?? 0,
+  };
+}
+
+function buildCoordinatesState(registry: ManagerRegistry): CoordinateSystemsDebugState {
+  const store = registry.store;
+  const stage = registry.stage;
+
+  // Get viewport state from store
+  const viewport = store?.getViewport?.() ?? { zoom: 1.0, pan: { x: 0, y: 0 } };
+  const zoom = viewport.zoom;
+  const pan = viewport.pan;
+
+  // Get stage position and scale (runtime Konva state)
+  const stagePos = stage?.position?.() ?? { x: 0, y: 0 };
+  const stageScale = stage?.scale?.() ?? { x: 1, y: 1 };
+
+  // Get last pointer position if available
+  let lastPointer = {
+    screen: null as { x: number; y: number } | null,
+    stage: null as { x: number; y: number } | null,
+    local: null as { x: number; y: number } | null,
+  };
+
+  try {
+    const pointerPos = stage?.getPointerPosition?.();
+    if (pointerPos) {
+      // Screen coordinates (raw from Konva)
+      lastPointer.screen = {
+        x: Math.round(pointerPos.x),
+        y: Math.round(pointerPos.y),
+      };
+
+      // Stage coordinates (after applying inverse of stage position)
+      // This is what Konva returns from getPointerPosition - it's already in stage space
+      lastPointer.stage = {
+        x: Math.round(pointerPos.x),
+        y: Math.round(pointerPos.y),
+      };
+
+      // Local/world coordinates (after applying inverse of stage transform)
+      // Formula: local = (screen - pan) / zoom
+      const localX = (pointerPos.x - stagePos.x) / stageScale.x;
+      const localY = (pointerPos.y - stagePos.y) / stageScale.y;
+      lastPointer.local = {
+        x: Math.round(localX * 100) / 100,
+        y: Math.round(localY * 100) / 100,
+      };
+    }
+  } catch {
+    // Pointer position not available
+  }
+
+  // Create transform formula explanation
+  const transformInfo = {
+    formula: `local = (screen - pan) / zoom | screen = (local * zoom) + pan`,
+    example: `pan=(${Math.round(pan.x)}, ${Math.round(pan.y)}), zoom=${zoom.toFixed(2)}`,
+  };
+
+  return {
+    stagePosition: {
+      x: Math.round(stagePos.x * 100) / 100,
+      y: Math.round(stagePos.y * 100) / 100,
+    },
+    stageScale: {
+      x: Math.round(stageScale.x * 100) / 100,
+      y: Math.round(stageScale.y * 100) / 100,
+    },
+    lastPointer,
+    transformInfo,
   };
 }
 
@@ -158,6 +281,7 @@ function buildLayersState(registry: ManagerRegistry): LayerDebugState[] {
     shapeIds: [...layer.shapeIds],
     primaryShapeId: layer.primaryShapeId,
     parentLayerId: layer.parentLayerId,
+    isLocked: layerManager.isLayerLocked?.(layer.id) ?? false,
   }));
 }
 
@@ -212,9 +336,17 @@ function buildStepState(registry: ManagerRegistry): StepDebugState {
 }
 
 function buildGridConfigState(registry: ManagerRegistry): GridConfigDebugState {
+  const store = registry.store;
   const gridManager = registry.gridManager;
 
-  // Try to get clip bounds
+  // Read gridConfig from centralized store
+  const gridConfig = store?.getGridConfig?.() ?? {
+    gridSize: 20,
+    snapEnabled: true,
+    gridVisible: true,
+  };
+
+  // Try to get clip bounds from gridManager (runtime state)
   let clipBounds = null;
   try {
     clipBounds = (gridManager as any)?.clipBounds ?? null;
@@ -223,9 +355,9 @@ function buildGridConfigState(registry: ManagerRegistry): GridConfigDebugState {
   }
 
   return {
-    gridSize: (gridManager as any)?.gridSize ?? 20,
-    snapEnabled: true, // TODO: Read from store when migrated
-    gridVisible: true,
+    gridSize: gridConfig.gridSize,
+    snapEnabled: gridConfig.snapEnabled,
+    gridVisible: gridConfig.gridVisible,
     clipBounds,
   };
 }

@@ -1,7 +1,17 @@
+/**
+ * GridManager
+ *
+ * Manages the visual grid overlay on the canvas.
+ * Draws grid lines based on current zoom/pan and clip bounds.
+ *
+ * Key change: Grid configuration is now read from GridStateStore (single source of truth).
+ * Local state only maintains runtime-only values (clipBounds, Konva layer reference).
+ */
 
 import Konva from 'konva';
 import { GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 import type { VisibleBounds, GridConfig } from '@/Components/Grid/types/grid';
+import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
 
 interface Bounds {
   x: number;
@@ -13,17 +23,66 @@ interface Bounds {
 export class GridManager {
   private layer: Konva.Layer;
   private stage: Konva.Stage;
-  private config: GridConfig;
   private clipBounds: Bounds | null = null;
+
+  // Store reference for grid config (single source of truth)
+  private store: GridStateStore | null = null;
+
+  // Fallback values used only during initialization before store is set
+  private _fallbackGridSize: number;
+  private _fallbackSnapEnabled: boolean;
+  private _fallbackVisible: boolean;
 
   constructor(stage: Konva.Stage, layer: Konva.Layer, config?: Partial<GridConfig>) {
     this.stage = stage;
     this.layer = layer;
-    this.config = {
-      size: config?.size ?? GRID_CONSTANTS.DEFAULT_GRID_SIZE,
-      snapEnabled: config?.snapEnabled ?? true,
-      visible: config?.visible ?? true,
-    };
+
+    // Store initial config as fallbacks (used until store is wired up)
+    this._fallbackGridSize = config?.size ?? GRID_CONSTANTS.DEFAULT_GRID_SIZE;
+    this._fallbackSnapEnabled = config?.snapEnabled ?? true;
+    this._fallbackVisible = config?.visible ?? true;
+  }
+
+  /**
+   * Set the GridStateStore reference (for grid config)
+   */
+  setStore(store: GridStateStore): void {
+    this.store = store;
+  }
+
+  /**
+   * Get grid size from store (single source of truth)
+   */
+  private get gridSize(): number {
+    return this.store?.state.gridConfig.gridSize ?? this._fallbackGridSize;
+  }
+
+  /**
+   * Get snap enabled from store (single source of truth)
+   */
+  private get snapEnabled(): boolean {
+    return this.store?.state.gridConfig.snapEnabled ?? this._fallbackSnapEnabled;
+  }
+
+  /**
+   * Get grid visible from store (single source of truth)
+   */
+  private get visible(): boolean {
+    return this.store?.state.gridConfig.gridVisible ?? this._fallbackVisible;
+  }
+
+  /**
+   * Get grid size (public accessor for external use)
+   */
+  getGridSize(): number {
+    return this.gridSize;
+  }
+
+  /**
+   * Get clip bounds (for debugging)
+   */
+  getClipBounds(): Bounds | null {
+    return this.clipBounds;
   }
   /**
    * Clear all grid lines from the layer
@@ -47,10 +106,10 @@ export class GridManager {
     const stageScale = this.stage.scaleX();
 
     // Calculate visible area in world coordinates
-    const startX = Math.floor((-stagePos.x / stageScale) / this.config.size) * this.config.size;
-    const endX = Math.ceil((stageWidth - stagePos.x) / stageScale / this.config.size) * this.config.size;
-    const startY = Math.floor((-stagePos.y / stageScale) / this.config.size) * this.config.size;
-    const endY = Math.ceil((stageHeight - stagePos.y) / stageScale / this.config.size) * this.config.size;
+    const startX = Math.floor((-stagePos.x / stageScale) / this.gridSize) * this.gridSize;
+    const endX = Math.ceil((stageWidth - stagePos.x) / stageScale / this.gridSize) * this.gridSize;
+    const startY = Math.floor((-stagePos.y / stageScale) / this.gridSize) * this.gridSize;
+    const endY = Math.ceil((stageHeight - stagePos.y) / stageScale / this.gridSize) * this.gridSize;
 
     return { startX, endX, startY, endY };
   }
@@ -67,7 +126,7 @@ export class GridManager {
     let lineCount = 0;
     const maxLines = GRID_CONSTANTS.MAX_GRID_LINES / 2; // Half for vertical, half for horizontal
 
-    for (let x = bounds.startX; x <= bounds.endX; x += this.config.size) {
+    for (let x = bounds.startX; x <= bounds.endX; x += this.gridSize) {
       if (lineCount >= maxLines) {
         console.warn('Maximum vertical grid lines reached, skipping remaining lines');
         break;
@@ -98,7 +157,7 @@ export class GridManager {
     let lineCount = 0;
     const maxLines = GRID_CONSTANTS.MAX_GRID_LINES / 2;
 
-    for (let y = bounds.startY; y <= bounds.endY; y += this.config.size) {
+    for (let y = bounds.startY; y <= bounds.endY; y += this.gridSize) {
       if (lineCount >= maxLines) {
         console.warn('Maximum horizontal grid lines reached, skipping remaining lines');
         break;
@@ -136,22 +195,6 @@ export class GridManager {
   }
 
   /**
-   * Intersect visible bounds with clip bounds
-   *
-   * @param visible - The currently visible bounds
-   * @param clip - The clip bounds to intersect with
-   * @returns The intersection of visible and clip bounds
-   */
-  private intersectBounds(visible: VisibleBounds, clip: Bounds): VisibleBounds {
-    return {
-      startX: Math.max(visible.startX, clip.x),
-      endX: Math.min(visible.endX, clip.x + clip.width),
-      startY: Math.max(visible.startY, clip.y),
-      endY: Math.min(visible.endY, clip.y + clip.height),
-    };
-  }
-
-  /**
    *
    * Redraw the entire grid
    *
@@ -159,7 +202,7 @@ export class GridManager {
    * (e.g., after pan, zoom, or configuration change)
    */
   redrawGrid(): void {
-    if (!this.config.visible) {
+    if (!this.visible) {
       this.clearGrid();
       return;
     }
@@ -170,12 +213,19 @@ export class GridManager {
     // Calculate visible bounds
     let bounds = this.getVisibleBounds();
 
-    // Apply clipping if set
+    // Apply clipping if set - use FULL clip bounds, not intersection
+    // This ensures the grid fills the entire parent shape regardless of zoom/pan
     if (this.clipBounds) {
-      bounds = this.intersectBounds(bounds, this.clipBounds);
+      // Convert clip bounds to VisibleBounds format
+      // Snap to grid size for proper alignment
+      bounds = {
+        startX: Math.floor(this.clipBounds.x / this.gridSize) * this.gridSize,
+        endX: Math.ceil((this.clipBounds.x + this.clipBounds.width) / this.gridSize) * this.gridSize,
+        startY: Math.floor(this.clipBounds.y / this.gridSize) * this.gridSize,
+        endY: Math.ceil((this.clipBounds.y + this.clipBounds.height) / this.gridSize) * this.gridSize,
+      };
     }
 
-    console.log(bounds);
     // Draw new grid lines
     this.drawVerticalLines(bounds);
     this.drawHorizontalLines(bounds);

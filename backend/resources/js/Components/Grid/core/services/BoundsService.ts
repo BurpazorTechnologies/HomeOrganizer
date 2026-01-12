@@ -107,9 +107,11 @@ export function createBoundsService(
     getParentBounds(shapeId: string): Bounds | null {
       const shape = store.getShape(shapeId);
       if (!shape) {
+        // Only log in dev mode to avoid console spam during rapid drag events
         return null;
       }
       if (!shape.parentShapeId) {
+        // Shape has no parent - this is normal for root shapes
         return null;
       }
 
@@ -160,6 +162,10 @@ export function createBoundsService(
       // Apply grid snapping
       if (config.getSnapEnabled()) {
         result = applyGridSnapToPosition(result, config.getGridSize(), true);
+
+        // CRITICAL: Re-constrain after snapping!
+        // Grid snapping can push the position outside bounds (e.g., snap rounds up past edge)
+        result = constrainPositionToBounds(result, shapeSize, effectiveBounds);
       }
 
       return result;
@@ -189,6 +195,8 @@ export function createBoundsService(
       // Apply grid snapping
       if (config.getSnapEnabled()) {
         result = applyGridSnapToBounds(result, config.getGridSize(), true);
+        // Re-constrain after snapping - snap can push outside bounds
+        result = constrainResizeToBounds(result, effectiveBounds, minSize);
       }
 
       return result;

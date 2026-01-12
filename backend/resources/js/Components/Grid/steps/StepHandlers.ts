@@ -14,6 +14,7 @@ import type {
   ToolbarAction,
   ManagerInstances,
 } from '@/Components/Grid/types/orchestration';
+import type { AreaType } from '@/Components/Grid/core/state/GridStateStore';
 import { isPositionWithinBounds } from '@/Components/Grid/core/utils/bounds';
 
 export class StepHandlers {
@@ -211,6 +212,11 @@ export class StepHandlers {
     const parentShapeId = config.parentContext?.parentShapeId || null;
     const parentBounds = config.parentContext?.parentBounds || null;
 
+    // Determine area type for unified model
+    const areaType = config.parentContext ? 'area' : 'home';
+    const depth = config.parentContext ? (managers.shapeManager.getShapeDepth(parentShapeId!) + 1) : 0;
+
+    // Use unified model: create shape WITH area semantics
     const shape = managers.shapeManager.createRectangle(
       position.x,
       position.y,
@@ -223,6 +229,10 @@ export class StepHandlers {
         parentBounds, // Fallback for legacy code paths (deprecated)
         parentShapeId, // For BoundsService live bounds (preferred)
         layerId: config.layerId,
+        // Unified model: area semantics embedded in shape
+        areaType,
+        depth,
+        childShapeIds: [],
       }
     );
 
@@ -232,14 +242,22 @@ export class StepHandlers {
       state.primaryShapeId = shape.id;
     }
 
-    // Add to layer
+    // Add to layer (pass shapeManager to apply lock state if layer is locked)
     managers.layerManager.addShapeToLayer(
       config.layerId,
       shape.id,
-      state.primaryShapeId === shape.id
+      state.primaryShapeId === shape.id,
+      managers.shapeManager
     );
 
-    // Create area in AreaManager - CRITICAL: Home area must be root
+    // Set root shape for home area (unified model)
+    if (!config.parentContext) {
+      managers.shapeManager.setRootShapeId(shape.id);
+      console.log(`Created HOME AREA shape (root) with ID: ${shape.id}`);
+    }
+
+    // Legacy: Also create area in AreaManager for backward compatibility
+    // TODO: Remove after Phase E migration is complete
     if (config.parentContext) {
       // Creating a child area
       const areaId = `area_${Date.now()}`;
@@ -473,8 +491,19 @@ export class StepHandlers {
         if (isPrimary) {
           state.primaryShapeId = shape.id;
 
-          // Only create HOME AREA if not already restored from hierarchy
-          // (AreaManager.deserialize() is called first in restoreState)
+          // Unified model: set root shape ID
+          managers.shapeManager.setRootShapeId(shape.id);
+
+          // Ensure shape has area semantics if not already set
+          if (!managers.shapeManager.isAreaShape(shape.id)) {
+            managers.shapeManager.updateAreaProperties(shape.id, {
+              areaType: 'home',
+              depth: 0,
+            });
+          }
+
+          // Legacy: Only create HOME AREA if not already restored from hierarchy
+          // TODO: Remove after Phase E migration is complete
           const homeAreaId = 'home_area_root';
           const existingArea = managers.areaManager.getArea(homeAreaId);
           if (!existingArea) {

@@ -48,17 +48,20 @@ export interface StepInfo {
 
 /**
  * Manager instances passed to steps
+ * All managers are typed as 'any' here to avoid circular imports.
+ * The actual types are defined in their respective manager files.
  */
 export interface ManagerInstances {
-  shapeManager: any; // Will be typed properly when we import
+  shapeManager: any;
   transformManager: any;
   labelManager: any;
   gridManager: any;
   layerManager: any;
   areaManager: any;
-  selectionManager: any; // Centralized selection logic
-  persistenceManager?: any; // Optional - for save/load operations
-  boundsService?: any; // BoundsService for live bounds queries
+  selectionManager: any;
+  zoomManager?: any; // For zoom operations
+  persistenceManager?: any; // For save/load operations
+  boundsService?: any; // For live bounds queries
 }
 
 /**

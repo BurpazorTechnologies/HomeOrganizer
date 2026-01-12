@@ -83,13 +83,9 @@ export class StepOrchestrator {
 
     // Handle parent context if this is a child area step
     if (config.parentContext) {
-      const parentNode = this.managers.shapeManager.getShapeNode(config.parentContext.parentShapeId);
-      if (parentNode) {
-        // Parent opacity is now handled by LayerManager's updateLayerVisuals()
-        // Just disable interaction
-        parentNode.draggable(false);
-        parentNode.listening(false);
-      }
+      // Lock all parent layers (Step 1 layers when entering Step 2)
+      // This uses the layer locking system instead of per-shape manipulation
+      this.managers.layerManager.lockAllLayersExcept(layer.id, this.managers.shapeManager);
 
       // Set grid clipping (visual effect only)
       // Note: Transform bounds are now handled by BoundsService via live parent queries
@@ -109,12 +105,8 @@ export class StepOrchestrator {
 
     // Handle parent context cleanup if this was a child area step
     if (config.parentContext) {
-      const parentNode = this.managers.shapeManager.getShapeNode(config.parentContext.parentShapeId);
-      if (parentNode) {
-        // Restore parent interactivity (opacity is handled by LayerManager)
-        parentNode.draggable(true);
-        parentNode.listening(true);
-      }
+      // Unlock all previously locked layers (restore Step 1 interactivity)
+      this.managers.layerManager.unlockAllLayers(this.managers.shapeManager);
 
       // Reset parent visual state if it was selected
       this.managers.selectionManager.resetParentVisual(config.parentContext.parentShapeId);
@@ -321,6 +313,8 @@ export class StepOrchestrator {
     // the area-to-shape mappings are already valid
     if (savedData.areaHierarchy && savedData.areaHierarchy.rootAreaId) {
       console.log('StepOrchestrator: Restoring area hierarchy...');
+      // Legacy: Use AreaManager for deserialization during migration
+      // TODO: Remove after Phase E migration is complete
       this.managers.areaManager.deserialize(
         savedData.areaHierarchy,
         this.managers.shapeManager
@@ -396,11 +390,24 @@ export class StepOrchestrator {
       return;
     }
 
-    const parentAreaId = this.managers.areaManager.findAreaByShapeId(this.currentState.primaryShapeId);
-    if (!parentAreaId) {
-      console.warn('Cannot create child area step: parent area not found');
-      return;
+    // Use unified model: parentShapeId IS the area identifier
+    // Legacy areaManager lookup is no longer needed
+    const parentShapeId = this.currentState.primaryShapeId;
+
+    // Verify the parent shape is an area shape
+    const isArea = this.managers.shapeManager.isAreaShape(parentShapeId);
+    if (!isArea) {
+      // Fallback to legacy areaManager for backward compatibility
+      // TODO: Remove after Phase E migration is complete
+      const legacyAreaId = this.managers.areaManager?.findAreaByShapeId(parentShapeId);
+      if (!legacyAreaId) {
+        console.warn('Cannot create child area step: parent area not found');
+        return;
+      }
     }
+
+    // In unified model, parentAreaId === parentShapeId
+    const parentAreaId = parentShapeId;
 
     // Get the current layer ID (parent layer for the child step)
     const parentLayerId = this.currentStepConfig.layerId;
@@ -434,8 +441,7 @@ export class StepOrchestrator {
       },
     };
 
-    // Save parent shape ID before resetting state
-    const parentShapeId = this.currentState.primaryShapeId;
+    // parentShapeId already set above from this.currentState.primaryShapeId
 
     this.stepConfigs.set(2, step2Config);
     this.exitStep(this.currentStepConfig);
@@ -540,6 +546,104 @@ export class StepOrchestrator {
   private notifyStepChange(): void {
     if (this.onStepChangeCallback) {
       this.onStepChangeCallback(this.getCurrentStepInfo());
+    }
+  }
+
+  // ==================== Pan Orchestration ====================
+
+  /**
+   * Handle pan-end orchestration flow
+   * Called when a pan gesture completes (drag or middle-mouse release)
+   *
+   * Flow:
+   * 1. Sync pan position to store (source of truth)
+   * 2. Redraw grid with new pan offset
+   * 3. Reinstantiate all shapes with fresh dragBoundFunc closures
+   * 4. Set draggable state based on whether we're staying in pan mode
+   *
+   * @param panPosition - The new pan position from stage.position()
+   * @param stayInPanMode - Whether pan mode should remain active after this gesture
+   * @returns Promise that resolves when orchestration is complete
+   */
+  async handlePanEnd(panPosition: { x: number; y: number }, stayInPanMode: boolean): Promise<void> {
+    console.log('[StepOrchestrator] Pan-end orchestration started', { panPosition, stayInPanMode });
+
+    // 1. Sync pan position to store (source of truth)
+    // ZoomManager handles updating both store and stage
+    if (this.managers.zoomManager?.setPan) {
+      this.managers.zoomManager.setPan(panPosition);
+    }
+
+    // 2. Redraw grid with new pan offset
+    this.managers.gridManager.redrawGrid();
+
+    // 3. Reinstantiate all shapes with fresh dragBoundFunc closures
+    // Force draggable based on whether we're staying in pan mode
+    await this.managers.shapeManager.reinstantiateShapes({ forceDraggable: !stayInPanMode });
+
+    // 4. Reattach transformer to selected shape's new node instance
+    // (reinstantiateShapes destroys old nodes, so transformer references are stale)
+    this.reattachTransformerToSelectedShape();
+
+    console.log('[StepOrchestrator] Pan-end orchestration complete');
+  }
+
+  /**
+   * Handle pan-mode-exit orchestration flow
+   * Called when pan mode is toggled OFF via button (not from drag gesture)
+   *
+   * Flow:
+   * 1. Sync current pan position to store
+   * 2. Redraw grid
+   * 3. Reinstantiate shapes with draggable: true
+   *
+   * @param currentPanPosition - The current pan position from stage.position()
+   * @returns Promise that resolves when orchestration is complete
+   */
+  async handlePanModeExit(currentPanPosition: { x: number; y: number }): Promise<void> {
+    console.log('[StepOrchestrator] Pan-mode-exit orchestration started', { currentPanPosition });
+
+    // 1. Sync pan position to store
+    if (this.managers.zoomManager?.setPan) {
+      this.managers.zoomManager.setPan(currentPanPosition);
+    }
+
+    // 2. Redraw grid
+    this.managers.gridManager.redrawGrid();
+
+    // 3. Reinstantiate shapes with draggable: true (exiting pan mode)
+    await this.managers.shapeManager.reinstantiateShapes({ forceDraggable: true });
+
+    // 4. Reattach transformer to selected shape's new node instance
+    this.reattachTransformerToSelectedShape();
+
+    console.log('[StepOrchestrator] Pan-mode-exit orchestration complete');
+  }
+
+  /**
+   * Reattach transformer to the currently selected shape's new Konva node
+   * Called after reinstantiateShapes to fix stale transformer references
+   */
+  private reattachTransformerToSelectedShape(): void {
+    const { selectionManager, transformManager } = this.managers;
+
+    if (!selectionManager || !transformManager) return;
+
+    const selectedShapeId = selectionManager.getSelectedShapeId?.();
+    if (!selectedShapeId) {
+      // No shape selected, detach transformer
+      transformManager.detach?.();
+      return;
+    }
+
+    // Get the new node instance from ShapeManager
+    const newNode = this.managers.shapeManager.getShapeNode(selectedShapeId);
+    if (newNode) {
+      console.log('[StepOrchestrator] Reattaching transformer to:', selectedShapeId);
+      transformManager.attachTo(newNode);
+    } else {
+      console.warn('[StepOrchestrator] Could not find new node for shape:', selectedShapeId);
+      transformManager.detach?.();
     }
   }
 }

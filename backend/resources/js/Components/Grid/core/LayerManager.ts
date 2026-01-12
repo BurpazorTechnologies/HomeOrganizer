@@ -13,20 +13,26 @@
  * - layer_home_area_child_123 + layer_home_area_child_123_labels
  *
  * Non-active layers are rendered with reduced opacity for visual hierarchy.
+ *
+ * Key change: currentLayerId is now backed by GridStateStore (single source of truth).
+ * Local state only tracks Konva layer references (runtime objects).
  */
 
 import Konva from 'konva';
 import type { Layer } from '@/Components/Grid/types/layers';
 import type { Step } from '@/Components/Grid/types/steps';
+import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
 
 const INACTIVE_LAYER_OPACITY = 0.4;
 const ACTIVE_LAYER_OPACITY = 1.0;
 
 export class LayerManager {
   private layers: Map<string, Layer> = new Map();
-  private currentLayerId: string | null = null;
   private stage: Konva.Stage;
   private transformOverlayLayer: Konva.Layer; // For transform controls (always on top)
+
+  // Store reference for currentLayerId (single source of truth)
+  private store: GridStateStore | null = null;
 
   constructor(stage: Konva.Stage) {
     this.stage = stage;
@@ -34,6 +40,20 @@ export class LayerManager {
     // Create transform overlay layer (always stays on top for transform handles)
     this.transformOverlayLayer = new Konva.Layer({ id: 'transform_overlay' });
     this.stage.add(this.transformOverlayLayer);
+  }
+
+  /**
+   * Set the GridStateStore reference (for currentLayerId)
+   */
+  setStore(store: GridStateStore): void {
+    this.store = store;
+  }
+
+  /**
+   * Get current layer ID from store (single source of truth)
+   */
+  private get currentLayerId(): string | null {
+    return this.store?.state.currentLayerId ?? null;
   }
 
   /**
@@ -92,6 +112,22 @@ export class LayerManager {
     };
 
     this.layers.set(layerId, layer);
+
+    // Sync with store (single source of truth for layer state)
+    if (this.store) {
+      this.store.addLayer({
+        id: layerId,
+        stepId: step.id,
+        order: step.order,
+        label: step.label,
+        shapeIds: [],
+        primaryShapeId: null,
+        parentLayerId,
+        areaId,
+        isLocked: false,
+      });
+    }
+
     this.setCurrentLayer(layerId);
 
     // Ensure proper z-ordering: label layers always above shape layers
@@ -188,7 +224,11 @@ export class LayerManager {
     if (!this.layers.has(layerId)) return;
 
     const previousLayerId = this.currentLayerId;
-    this.currentLayerId = layerId;
+
+    // Update state via store (single source of truth)
+    if (this.store) {
+      this.store.setCurrentLayer(layerId);
+    }
 
     // Update visual states for all layers
     this.updateLayerVisuals(previousLayerId);
@@ -234,8 +274,13 @@ export class LayerManager {
 
   /**
    * Add shape to layer
+   * Note: If the layer is locked, the shape will also be locked
+   * @param layerId - The layer to add the shape to
+   * @param shapeId - The shape ID to add
+   * @param isPrimary - Whether this is the primary shape
+   * @param shapeManager - Optional ShapeManager for applying lock state to Konva nodes
    */
-  addShapeToLayer(layerId: string, shapeId: string, isPrimary: boolean = false): void {
+  addShapeToLayer(layerId: string, shapeId: string, isPrimary: boolean = false, shapeManager?: any): void {
     const layer = this.layers.get(layerId);
     if (!layer) return;
 
@@ -245,6 +290,20 @@ export class LayerManager {
 
     if (isPrimary || layer.primaryShapeId === null) {
       layer.primaryShapeId = shapeId;
+    }
+
+    // Sync with store
+    if (this.store) {
+      this.store.addShapeToLayer(layerId, shapeId, isPrimary);
+    }
+
+    // If layer is locked, also lock the newly added shape
+    if (this.isLayerLocked(layerId) && shapeManager) {
+      const node = shapeManager.getShapeNode(shapeId);
+      if (node) {
+        node.draggable(false);
+        node.listening(false);
+      }
     }
   }
 
@@ -259,6 +318,11 @@ export class LayerManager {
 
     if (layer.primaryShapeId === shapeId) {
       layer.primaryShapeId = layer.shapeIds.length > 0 ? layer.shapeIds[0] : null;
+    }
+
+    // Sync with store
+    if (this.store) {
+      this.store.removeShapeFromLayer(layerId, shapeId);
     }
   }
 
@@ -298,12 +362,21 @@ export class LayerManager {
    * Clear all layers (but keep transform overlay)
    */
   clear(): void {
+    // Remove layers from store first
+    if (this.store) {
+      this.layers.forEach(layer => {
+        this.store!.removeLayer(layer.id);
+      });
+      this.store.setCurrentLayer(null);
+    }
+
+    // Destroy Konva layers
     this.layers.forEach(layer => {
       layer.konvaShapeLayer.destroy();
       layer.konvaLabelLayer.destroy();
     });
     this.layers.clear();
-    this.currentLayerId = null;
+
     // Note: transform overlay is kept - it just needs its children cleared
     this.transformOverlayLayer.destroyChildren();
   }
@@ -338,5 +411,126 @@ export class LayerManager {
    */
   getCurrentLayerId(): string | null {
     return this.currentLayerId;
+  }
+
+  // ==================== Layer Locking ====================
+
+  /**
+   * Lock a layer - makes all shapes in the layer non-interactive
+   * Used when transitioning to child steps (e.g., Step 1 locked when on Step 2)
+   *
+   * @param layerId - The layer to lock
+   * @param shapeManager - ShapeManager instance to update shape interactivity
+   */
+  lockLayer(layerId: string, shapeManager: any): void {
+    const layer = this.layers.get(layerId);
+    if (!layer) return;
+
+    // Update store state
+    if (this.store) {
+      this.store.lockLayer(layerId);
+    }
+
+    // Update Konva layer - disable pointer events
+    layer.konvaShapeLayer.listening(false);
+    layer.konvaLabelLayer.listening(false);
+
+    // Update all shapes in this layer
+    for (const shapeId of layer.shapeIds) {
+      const node = shapeManager.getShapeNode(shapeId);
+      if (node) {
+        node.draggable(false);
+        node.listening(false);
+      }
+    }
+
+    // Redraw to reflect changes
+    layer.konvaShapeLayer.batchDraw();
+    layer.konvaLabelLayer.batchDraw();
+
+    console.log(`[LayerManager] Locked layer: ${layerId}`);
+  }
+
+  /**
+   * Unlock a layer - restores shape interactivity
+   *
+   * @param layerId - The layer to unlock
+   * @param shapeManager - ShapeManager instance to update shape interactivity
+   */
+  unlockLayer(layerId: string, shapeManager: any): void {
+    const layer = this.layers.get(layerId);
+    if (!layer) return;
+
+    // Update store state
+    if (this.store) {
+      this.store.unlockLayer(layerId);
+    }
+
+    // Update Konva layer - enable pointer events
+    layer.konvaShapeLayer.listening(true);
+    layer.konvaLabelLayer.listening(true);
+
+    // Update all shapes in this layer
+    for (const shapeId of layer.shapeIds) {
+      const node = shapeManager.getShapeNode(shapeId);
+      if (node) {
+        node.draggable(true);
+        node.listening(true);
+      }
+    }
+
+    // Redraw to reflect changes
+    layer.konvaShapeLayer.batchDraw();
+    layer.konvaLabelLayer.batchDraw();
+
+    console.log(`[LayerManager] Unlocked layer: ${layerId}`);
+  }
+
+  /**
+   * Check if a layer is locked
+   */
+  isLayerLocked(layerId: string): boolean {
+    if (this.store) {
+      return this.store.isLayerLocked(layerId);
+    }
+    return false;
+  }
+
+  /**
+   * Get all locked layer IDs
+   */
+  getLockedLayerIds(): string[] {
+    if (this.store) {
+      return this.store.getLockedLayerIds();
+    }
+    return [];
+  }
+
+  /**
+   * Lock all layers except the specified one
+   * Useful when transitioning to a new step
+   *
+   * @param exceptLayerId - The layer to keep unlocked (current active layer)
+   * @param shapeManager - ShapeManager instance to update shape interactivity
+   */
+  lockAllLayersExcept(exceptLayerId: string, shapeManager: any): void {
+    for (const [layerId] of this.layers) {
+      if (layerId !== exceptLayerId) {
+        this.lockLayer(layerId, shapeManager);
+      }
+    }
+  }
+
+  /**
+   * Unlock all layers
+   *
+   * @param shapeManager - ShapeManager instance to update shape interactivity
+   */
+  unlockAllLayers(shapeManager: any): void {
+    for (const [layerId] of this.layers) {
+      if (this.isLayerLocked(layerId)) {
+        this.unlockLayer(layerId, shapeManager);
+      }
+    }
   }
 }

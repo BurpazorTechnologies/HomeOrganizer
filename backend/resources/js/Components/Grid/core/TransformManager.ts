@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import { TRANSFORMER_CONFIG, GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 import type { BoundsService } from '@/Components/Grid/core/services/BoundsService';
+import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
 
 /**
  * TransformManager
@@ -10,14 +11,19 @@ import type { BoundsService } from '@/Components/Grid/core/services/BoundsServic
  * - Provides grid snapping during transforms
  * - Emits events when shapes are transformed
  * - Uses BoundsService for live parent bounds (never stale)
+ * - Reads gridSize/snapEnabled from store (single source of truth)
  */
 export class TransformManager {
     private stage: Konva.Stage;
     private layer: Konva.Layer;
     private transformer: Konva.Transformer;
-    private gridSize: number;
-    private snapEnabled: boolean;
     private boundsService: BoundsService | null = null;
+    private store: GridStateStore | null = null;
+
+    // Fallback values (used if store not available)
+    private _fallbackGridSize: number;
+    private _fallbackSnapEnabled: boolean;
+
     private onTransformCallback?: (shapeId: string, dimensions: {
         x: number;
         y: number;
@@ -32,15 +38,17 @@ export class TransformManager {
             gridSize: number;
             snapEnabled: boolean;
             boundsService?: BoundsService;
+            store?: GridStateStore;
         }
     ) {
         this.stage = stage;
         this.layer = layer;
-        this.gridSize = options.gridSize;
-        this.snapEnabled = options.snapEnabled;
+        this._fallbackGridSize = options.gridSize;
+        this._fallbackSnapEnabled = options.snapEnabled;
         this.boundsService = options.boundsService || null;
+        this.store = options.store || null;
 
-        // Create transformer
+        // Create transformer (Note: uses gridSize/snapEnabled getters below)
         this.transformer = new Konva.Transformer({
             rotateEnabled: TRANSFORMER_CONFIG.ROTATE_ENABLED,
             enabledAnchors: [...TRANSFORMER_CONFIG.ENABLED_ANCHORS],
@@ -91,6 +99,20 @@ export class TransformManager {
 
         // Setup transform events
         this.setupTransformEvents();
+    }
+
+    /**
+     * Get current grid size from store (single source of truth)
+     */
+    private get gridSize(): number {
+        return this.store?.getGridConfig()?.gridSize ?? this._fallbackGridSize;
+    }
+
+    /**
+     * Get current snap enabled state from store (single source of truth)
+     */
+    private get snapEnabled(): boolean {
+        return this.store?.getGridConfig()?.snapEnabled ?? this._fallbackSnapEnabled;
     }
 
     /**
@@ -185,17 +207,25 @@ export class TransformManager {
     }
 
     /**
-     * Update grid size
+     * Update grid size (writes to store - single source of truth)
      */
     updateGridSize(size: number): void {
-        this.gridSize = size;
+        if (this.store) {
+            this.store.setGridSize(size);
+        } else {
+            this._fallbackGridSize = size;
+        }
     }
 
     /**
-     * Toggle snap to grid
+     * Toggle snap to grid (writes to store - single source of truth)
      */
     toggleSnap(enabled: boolean): void {
-        this.snapEnabled = enabled;
+        if (this.store) {
+            this.store.setSnapEnabled(enabled);
+        } else {
+            this._fallbackSnapEnabled = enabled;
+        }
     }
 
     /**

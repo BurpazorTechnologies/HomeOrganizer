@@ -1,43 +1,48 @@
 import Konva from 'konva';
+import type { GridStateStore, SelectionState } from '@/Components/Grid/core/state/GridStateStore';
+
+// Re-export SelectionState for consumers who import from SelectionManager
+export type { SelectionState } from '@/Components/Grid/core/state/GridStateStore';
 
 /**
  * SelectionManager
  *
  * Centralizes all selection logic and state management.
  * Responsible for:
- * - Tracking the currently selected shape/node
+ * - Tracking the currently selected shape/node (via GridStateStore)
  * - Attaching/detaching visual feedback (transformer, highlights)
  * - Managing selection state transitions
  * - Exposing selection-related functions for other managers
+ *
+ * Key change: Selection state is now backed by GridStateStore (single source of truth).
+ * Local state only tracks visual-only concerns (stroke widths, dashes for restoration).
  */
-
-export interface SelectionState {
-  selectedShapeId: string | null;
-  selectedLayerId: string | null;
-  isParentSelected: boolean;  // True when parent shape is selected (in child steps)
-}
 
 export interface SelectionCallbacks {
   onSelectionChange?: (state: SelectionState) => void;
 }
 
 export class SelectionManager {
-  private state: SelectionState = {
-    selectedShapeId: null,
-    selectedLayerId: null,
-    isParentSelected: false,
-  };
+  // Store reference for selection state (single source of truth)
+  private store: GridStateStore | null = null;
 
   private shapeManager: any;
   private transformManager: any;
   private callbacks: SelectionCallbacks = {};
 
-  // Visual state storage for restoration
+  // Visual state storage for restoration (local only - not persisted)
   private originalStrokeWidths: Map<string, number> = new Map();
   private originalDashes: Map<string, number[]> = new Map();
 
   constructor() {
-    // Managers will be set via setManagers()
+    // Managers and store will be set via setManagers() and setStore()
+  }
+
+  /**
+   * Set the GridStateStore reference (for selection state)
+   */
+  setStore(store: GridStateStore): void {
+    this.store = store;
   }
 
   /**
@@ -59,31 +64,39 @@ export class SelectionManager {
   }
 
   /**
-   * Get current selection state
+   * Get current selection state from store (single source of truth)
    */
   getState(): SelectionState {
-    return { ...this.state };
+    if (this.store) {
+      return { ...this.store.state.selection };
+    }
+    // Fallback for when store isn't set yet
+    return {
+      selectedShapeId: null,
+      selectedLayerId: null,
+      isParentSelected: false,
+    };
   }
 
   /**
-   * Get the currently selected shape ID
+   * Get the currently selected shape ID from store (single source of truth)
    */
   getSelectedShapeId(): string | null {
-    return this.state.selectedShapeId;
+    return this.store?.state.selection.selectedShapeId ?? null;
   }
 
   /**
    * Check if a specific shape is selected
    */
   isSelected(shapeId: string): boolean {
-    return this.state.selectedShapeId === shapeId;
+    return this.store?.state.selection.selectedShapeId === shapeId;
   }
 
   /**
    * Check if a parent shape is currently selected
    */
   isParentSelected(): boolean {
-    return this.state.isParentSelected;
+    return this.store?.state.selection.isParentSelected ?? false;
   }
 
   /**
@@ -93,10 +106,10 @@ export class SelectionManager {
     // Clear previous selection visuals
     this.clearSelectionVisuals();
 
-    // Update state
-    this.state.selectedShapeId = shapeId;
-    this.state.selectedLayerId = layerId;
-    this.state.isParentSelected = false;
+    // Update state via store (single source of truth)
+    if (this.store) {
+      this.store.select(shapeId, layerId, false);
+    }
 
     // Apply selection visuals
     this.shapeManager?.selectShape(shapeId);
@@ -127,10 +140,10 @@ export class SelectionManager {
       parentNode.getLayer()?.batchDraw();
     }
 
-    // Update state
-    this.state.selectedShapeId = shapeId;
-    this.state.selectedLayerId = layerId;
-    this.state.isParentSelected = true;
+    // Update state via store (single source of truth)
+    if (this.store) {
+      this.store.select(shapeId, layerId, true); // isParent = true
+    }
 
     // Deselect in shape manager and detach transformer
     this.shapeManager?.deselectShape();
@@ -145,9 +158,10 @@ export class SelectionManager {
   deselect(): void {
     this.clearSelectionVisuals();
 
-    this.state.selectedShapeId = null;
-    this.state.selectedLayerId = null;
-    this.state.isParentSelected = false;
+    // Update state via store (single source of truth)
+    if (this.store) {
+      this.store.deselect();
+    }
 
     this.shapeManager?.deselectShape();
     this.transformManager?.detach();
@@ -206,11 +220,12 @@ export class SelectionManager {
    */
   clear(): void {
     this.clearSelectionVisuals();
-    this.state = {
-      selectedShapeId: null,
-      selectedLayerId: null,
-      isParentSelected: false,
-    };
+
+    // Clear state via store (single source of truth)
+    if (this.store) {
+      this.store.deselect();
+    }
+
     this.notifyChange();
   }
 }

@@ -6,7 +6,7 @@
  */
 
 import type { MutationRecord } from '../core/state/MutationTracker';
-import type { AreaState } from '../core/state/GridStateStore';
+import type { AreaState, ActionLockState } from '../core/state/GridStateStore';
 import type { Bounds } from '../core/utils/bounds';
 
 // ==================== Layer Debug State ====================
@@ -22,6 +22,7 @@ export interface LayerDebugState {
   shapeIds: string[];
   primaryShapeId: string | null;
   parentLayerId: string | null;
+  isLocked: boolean;  // When true, shapes in this layer cannot be interacted with
 }
 
 // ==================== Viewport State ====================
@@ -105,14 +106,44 @@ export interface GridConfigDebugState {
   clipBounds: Bounds | null;
 }
 
+// ==================== Coordinate Systems State ====================
+// Helps debug coordinate transformation issues between pan/zoom
+
+export interface CoordinateSystemsDebugState {
+  // Stage transform (applied by pan/zoom)
+  stagePosition: { x: number; y: number };  // Pan offset
+  stageScale: { x: number; y: number };     // Zoom scale
+
+  // Last pointer position in different coordinate systems
+  lastPointer: {
+    screen: { x: number; y: number } | null;  // Raw screen coordinates
+    stage: { x: number; y: number } | null;   // Stage-relative (after pan)
+    local: { x: number; y: number } | null;   // Local/world coordinates (after pan+zoom)
+  };
+
+  // Coordinate transformation helpers
+  transformInfo: {
+    // To convert screen -> local: (screen - pan) / zoom
+    // To convert local -> screen: (local * zoom) + pan
+    formula: string;
+    example: string;
+  };
+}
+
 // ==================== Complete Debug State ====================
 
 export interface DebugState {
   // Timestamp for tracking updates
   timestamp: number;
 
+  // Action lock (current action in progress)
+  actionLock: ActionLockState;
+
   // Viewport/Zoom
   viewport: ViewportDebugState;
+
+  // Coordinate systems (global vs local)
+  coordinates: CoordinateSystemsDebugState;
 
   // Selection
   selection: SelectionDebugState;
@@ -150,10 +181,22 @@ export interface DebugSection {
 
 export const DEBUG_SECTIONS: DebugSection[] = [
   {
+    key: 'actionLock',
+    label: 'Action Lock',
+    description: 'Current action in progress (pan, zoom, drag, etc.)',
+    defaultExpanded: true, // Important for debugging action conflicts
+  },
+  {
     key: 'viewport',
     label: 'Viewport',
     description: 'Zoom, pan, and canvas dimensions',
     defaultExpanded: false,
+  },
+  {
+    key: 'coordinates',
+    label: 'Coordinates',
+    description: 'Global vs local coordinate systems (debug pan/zoom issues)',
+    defaultExpanded: true, // Important for debugging coordinate issues
   },
   {
     key: 'selection',

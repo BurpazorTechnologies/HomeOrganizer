@@ -2,60 +2,76 @@
  * ZoomManager
  *
  * Manages canvas zoom functionality with constraints:
- * - Default zoom: 1.0 (100%, cannot zoom in beyond this)
- * - Can only zoom OUT from default
- * - Once zoomed out, can zoom back IN to default (1.0)
- * - Min zoom: defined in constants (e.g., 0.1 = 10%)
+ * - Default zoom: 1.0 (100%)
+ * - Min zoom: 0.25 (25%)
+ * - Max zoom: 2.0 (200%)
+ * - Uses FIXED INCREMENTS (e.g., 0.25) for clean zoom levels: 25%, 50%, 75%, 100%, 125%, etc.
+ *
+ * State is stored in GridStateStore for centralized state management.
  */
 
 import type Konva from 'konva';
 import { GRID_CONSTANTS } from '@/Components/Grid/types/constants';
+import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
+
+export interface ZoomManagerConfig {
+  store: GridStateStore;
+}
 
 export class ZoomManager {
   private stage: Konva.Stage;
-  private currentZoom: number = GRID_CONSTANTS.DEFAULT_ZOOM;
+  private store: GridStateStore;
   private onZoomChangeCallback?: (zoom: number) => void;
 
-  constructor(stage: Konva.Stage) {
+  constructor(stage: Konva.Stage, config: ZoomManagerConfig) {
     this.stage = stage;
+    this.store = config.store;
   }
 
   /**
-   * Get current zoom level
+   * Get current zoom level from store
    */
   getCurrentZoom(): number {
-    return this.currentZoom;
+    return this.store.state.viewport.zoom;
   }
 
   /**
-   * Zoom out (decrease scale)
+   * Zoom out (decrease scale by fixed increment)
    */
   zoomOut(): boolean {
-    if (this.currentZoom <= GRID_CONSTANTS.MIN_ZOOM) {
+    const currentZoom = this.getCurrentZoom();
+    if (currentZoom <= GRID_CONSTANTS.MIN_ZOOM) {
       return false; // Already at minimum
     }
 
-    // Calculate new zoom level
-    const newZoom = this.currentZoom / GRID_CONSTANTS.ZOOM_STEP;
+    // FIXED INCREMENT: subtract step (e.g., 1.0 - 0.25 = 0.75)
+    const newZoom = currentZoom - GRID_CONSTANTS.ZOOM_STEP;
     const clampedZoom = Math.max(newZoom, GRID_CONSTANTS.MIN_ZOOM);
 
-    this.setZoom(clampedZoom);
+    // Round to avoid floating point issues (e.g., 0.7500000001)
+    const roundedZoom = Math.round(clampedZoom * 100) / 100;
+
+    this.setZoom(roundedZoom);
     return true;
   }
 
   /**
-   * Zoom in (increase scale, up to default of 1.0)
+   * Zoom in (increase scale by fixed increment)
    */
   zoomIn(): boolean {
-    if (this.currentZoom >= GRID_CONSTANTS.DEFAULT_ZOOM) {
-      return false; // Cannot zoom in beyond default
+    const currentZoom = this.getCurrentZoom();
+    if (currentZoom >= GRID_CONSTANTS.MAX_ZOOM) {
+      return false; // Already at maximum
     }
 
-    // Calculate new zoom level
-    const newZoom = this.currentZoom * GRID_CONSTANTS.ZOOM_STEP;
-    const clampedZoom = Math.min(newZoom, GRID_CONSTANTS.DEFAULT_ZOOM);
+    // FIXED INCREMENT: add step (e.g., 0.75 + 0.25 = 1.0)
+    const newZoom = currentZoom + GRID_CONSTANTS.ZOOM_STEP;
+    const clampedZoom = Math.min(newZoom, GRID_CONSTANTS.MAX_ZOOM);
 
-    this.setZoom(clampedZoom);
+    // Round to avoid floating point issues
+    const roundedZoom = Math.round(clampedZoom * 100) / 100;
+
+    this.setZoom(roundedZoom);
     return true;
   }
 
@@ -85,13 +101,14 @@ export class ZoomManager {
    * Set zoom to specific value
    */
   private setZoom(zoom: number): void {
-    // Clamp between min and default
+    // Clamp between min and max
     const clampedZoom = Math.max(
       GRID_CONSTANTS.MIN_ZOOM,
-      Math.min(zoom, GRID_CONSTANTS.DEFAULT_ZOOM)
+      Math.min(zoom, GRID_CONSTANTS.MAX_ZOOM)
     );
 
-    this.currentZoom = clampedZoom;
+    // Update store (this tracks the mutation)
+    this.store.setZoom(clampedZoom);
 
     // Apply to stage
     this.stage.scale({ x: clampedZoom, y: clampedZoom });
@@ -107,14 +124,14 @@ export class ZoomManager {
    * Check if can zoom in
    */
   canZoomIn(): boolean {
-    return this.currentZoom < GRID_CONSTANTS.DEFAULT_ZOOM;
+    return this.getCurrentZoom() < GRID_CONSTANTS.MAX_ZOOM;
   }
 
   /**
    * Check if can zoom out
    */
   canZoomOut(): boolean {
-    return this.currentZoom > GRID_CONSTANTS.MIN_ZOOM;
+    return this.getCurrentZoom() > GRID_CONSTANTS.MIN_ZOOM;
   }
 
   /**
@@ -128,7 +145,7 @@ export class ZoomManager {
    * Get zoom as percentage
    */
   getZoomPercentage(): number {
-    return Math.round(this.currentZoom * 100);
+    return Math.round(this.getCurrentZoom() * 100);
   }
 
   /**
@@ -136,6 +153,8 @@ export class ZoomManager {
    * @param shape - Shape with x, y, width, height properties
    */
   focusOnShape(shape: { x: number; y: number; width: number; height: number }): void {
+    const currentZoom = this.getCurrentZoom();
+
     // Calculate the center of the shape
     const shapeCenterX = shape.x + shape.width / 2;
     const shapeCenterY = shape.y + shape.height / 2;
@@ -145,11 +164,30 @@ export class ZoomManager {
     const stageCenterY = this.stage.height() / 2;
 
     // Calculate the offset needed to center the shape
-    const offsetX = stageCenterX - shapeCenterX * this.currentZoom;
-    const offsetY = stageCenterY - shapeCenterY * this.currentZoom;
+    const offsetX = stageCenterX - shapeCenterX * currentZoom;
+    const offsetY = stageCenterY - shapeCenterY * currentZoom;
+
+    // Update store with new pan position
+    this.store.setPan({ x: offsetX, y: offsetY });
 
     // Apply the position to stage
     this.stage.position({ x: offsetX, y: offsetY });
+    this.stage.batchDraw();
+  }
+
+  /**
+   * Get current pan position from store
+   */
+  getPan(): { x: number; y: number } {
+    return this.store.getViewport().pan;
+  }
+
+  /**
+   * Set pan position
+   */
+  setPan(pan: { x: number; y: number }): void {
+    this.store.setPan(pan);
+    this.stage.position(pan);
     this.stage.batchDraw();
   }
 }
