@@ -6,12 +6,17 @@
  *
  * Key change: Grid configuration is now read from GridStateStore (single source of truth).
  * Local state only maintains runtime-only values (clipBounds, Konva layer reference).
+ *
+ * Event-driven architecture (Phase 2):
+ * - Subscribes to ZOOM_CHANGED, PAN_CHANGED events to auto-redraw
+ * - Subscribes to GRID_CONFIG_CHANGED to respond to config updates
  */
 
 import Konva from 'konva';
 import { GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 import type { VisibleBounds, GridConfig } from '@/Components/Grid/types/grid';
 import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
+import type { EventBus, Unsubscribe } from '@/Components/Grid/core/events';
 
 interface Bounds {
   x: number;
@@ -27,6 +32,10 @@ export class GridManager {
 
   // Store reference for grid config (single source of truth)
   private store: GridStateStore | null = null;
+
+  // EventBus for event-driven updates
+  private eventBus: EventBus | null = null;
+  private eventUnsubscribers: Unsubscribe[] = [];
 
   // Fallback values used only during initialization before store is set
   private _fallbackGridSize: number;
@@ -48,6 +57,44 @@ export class GridManager {
    */
   setStore(store: GridStateStore): void {
     this.store = store;
+  }
+
+  /**
+   * Set the EventBus and subscribe to relevant events
+   * When events are received, the grid will auto-redraw
+   */
+  setEventBus(eventBus: EventBus): void {
+    // Clear any existing subscriptions
+    this.clearEventSubscriptions();
+
+    this.eventBus = eventBus;
+
+    // Subscribe to events that require grid redraw
+    // Note: ZOOM_CHANGED is currently still handled by ManagerRegistry for backwards compat
+    // These subscriptions provide direct event-driven updates when wired up
+    this.eventUnsubscribers.push(
+      eventBus.on('GRID_SIZE_CHANGED', () => this.redrawGrid()),
+      eventBus.on('GRID_VISIBLE_CHANGED', () => this.redrawGrid()),
+      eventBus.on('GRID_CONFIG_CHANGED', () => this.redrawGrid()),
+    );
+  }
+
+  /**
+   * Clear event subscriptions (used during cleanup or when switching EventBus)
+   */
+  private clearEventSubscriptions(): void {
+    this.eventUnsubscribers.forEach(unsub => unsub());
+    this.eventUnsubscribers = [];
+  }
+
+  /**
+   * Cleanup resources
+   */
+  destroy(): void {
+    this.clearEventSubscriptions();
+    this.eventBus = null;
+    this.store = null;
+    this.clearGrid();
   }
 
   /**

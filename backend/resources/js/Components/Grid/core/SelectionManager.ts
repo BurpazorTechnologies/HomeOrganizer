@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import type { GridStateStore, SelectionState } from '@/Components/Grid/core/state/GridStateStore';
+import type { EventBus, Unsubscribe } from '@/Components/Grid/core/events';
 
 // Re-export SelectionState for consumers who import from SelectionManager
 export type { SelectionState } from '@/Components/Grid/core/state/GridStateStore';
@@ -16,19 +17,23 @@ export type { SelectionState } from '@/Components/Grid/core/state/GridStateStore
  *
  * Key change: Selection state is now backed by GridStateStore (single source of truth).
  * Local state only tracks visual-only concerns (stroke widths, dashes for restoration).
+ *
+ * Event-driven architecture:
+ * - Store emits SELECTION_CHANGED and SELECTION_CLEARED events
+ * - SelectionManager's actions trigger these events via store mutations
+ * - Subscribe to SELECTION_CHANGED via EventBus for selection updates
  */
-
-export interface SelectionCallbacks {
-  onSelectionChange?: (state: SelectionState) => void;
-}
 
 export class SelectionManager {
   // Store reference for selection state (single source of truth)
   private store: GridStateStore | null = null;
 
+  // EventBus for event-driven updates
+  private eventBus: EventBus | null = null;
+  private eventUnsubscribers: Unsubscribe[] = [];
+
   private shapeManager: any;
   private transformManager: any;
-  private callbacks: SelectionCallbacks = {};
 
   // Visual state storage for restoration (local only - not persisted)
   private originalStrokeWidths: Map<string, number> = new Map();
@@ -46,6 +51,44 @@ export class SelectionManager {
   }
 
   /**
+   * Set the EventBus and subscribe to relevant events
+   * Note: SelectionManager primarily emits events via store mutations
+   * This provides a hook for responding to external selection-related events
+   */
+  setEventBus(eventBus: EventBus): void {
+    // Clear any existing subscriptions
+    this.clearEventSubscriptions();
+
+    this.eventBus = eventBus;
+
+    // Subscribe to shape deletion to auto-deselect if selected shape is deleted
+    this.eventUnsubscribers.push(
+      eventBus.on('SHAPE_DELETED', ({ shapeId }) => {
+        if (this.getSelectedShapeId() === shapeId) {
+          this.deselect();
+        }
+      }),
+    );
+  }
+
+  /**
+   * Clear event subscriptions (used during cleanup)
+   */
+  private clearEventSubscriptions(): void {
+    this.eventUnsubscribers.forEach(unsub => unsub());
+    this.eventUnsubscribers = [];
+  }
+
+  /**
+   * Cleanup resources
+   */
+  destroy(): void {
+    this.clearEventSubscriptions();
+    this.eventBus = null;
+    this.clear();
+  }
+
+  /**
    * Set manager references (called after all managers are created)
    */
   setManagers(managers: {
@@ -54,13 +97,6 @@ export class SelectionManager {
   }): void {
     this.shapeManager = managers.shapeManager;
     this.transformManager = managers.transformManager;
-  }
-
-  /**
-   * Register callbacks for selection events
-   */
-  onSelectionChange(callback: (state: SelectionState) => void): void {
-    this.callbacks.onSelectionChange = callback;
   }
 
   /**
@@ -118,7 +154,7 @@ export class SelectionManager {
       this.transformManager?.attachTo(node);
     }
 
-    this.notifyChange();
+    // Note: SELECTION_CHANGED event is emitted by store.select() above
   }
 
   /**
@@ -149,7 +185,7 @@ export class SelectionManager {
     this.shapeManager?.deselectShape();
     this.transformManager?.detach();
 
-    this.notifyChange();
+    // Note: SELECTION_CHANGED event is emitted by store.select() above
   }
 
   /**
@@ -166,7 +202,7 @@ export class SelectionManager {
     this.shapeManager?.deselectShape();
     this.transformManager?.detach();
 
-    this.notifyChange();
+    // Note: SELECTION_CLEARED event is emitted by store.deselect() above
   }
 
   /**
@@ -207,15 +243,6 @@ export class SelectionManager {
   }
 
   /**
-   * Notify listeners of selection change
-   */
-  private notifyChange(): void {
-    if (this.callbacks.onSelectionChange) {
-      this.callbacks.onSelectionChange(this.getState());
-    }
-  }
-
-  /**
    * Clear all state (for full reset)
    */
   clear(): void {
@@ -226,6 +253,6 @@ export class SelectionManager {
       this.store.deselect();
     }
 
-    this.notifyChange();
+    // Note: SELECTION_CLEARED event is emitted by store.deselect() above
   }
 }

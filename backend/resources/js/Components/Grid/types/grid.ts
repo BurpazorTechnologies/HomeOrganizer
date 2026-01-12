@@ -1,30 +1,16 @@
 /**
- * Grid State Type Definitions
+ * Grid Type Definitions
  *
- * Types for grid configuration and state management.
+ * Types for grid rendering and visualization.
+ *
+ * NOTE: For state types, use types/state/ instead:
+ * - GridConfigState (not GridConfig) - from types/state/
+ * - ViewportState - from types/state/
  */
-
-import type { Point } from './shapes';
-
-/**
- * Grid configuration
- */
-export interface GridConfig {
-  size: number;           // spacing between grid lines
-  snapEnabled: boolean;   // whether to snap shapes to grid
-  visible: boolean;       // show/hide grid lines
-}
-
-/**
- * Viewport state (camera position and zoom)
- */
-export interface ViewportState {
-  position: Point;        // pan offset
-  scale: number;          // zoom level (1.0 = 100%)
-}
 
 /**
  * Visible bounds in world coordinates
+ * Used by GridManager for calculating which grid lines to render
  */
 export interface VisibleBounds {
   startX: number;
@@ -34,10 +20,24 @@ export interface VisibleBounds {
 }
 
 /**
- * Grid render settings
+ * Grid render settings for drawing grid lines
  */
 export interface GridRenderSettings {
   lineColor: string;
   lineWidth: number;
   shouldRender: boolean;
+}
+
+// ==================== Deprecated Types ====================
+// These are kept for backwards compatibility but should not be used
+// Use types/state/GridConfigState and types/state/ViewportState instead
+
+/**
+ * @deprecated Use GridConfigState from types/state/ instead
+ * This type has different property names (size vs gridSize, visible vs gridVisible)
+ */
+export interface GridConfig {
+  size: number;           // Use gridSize in GridConfigState
+  snapEnabled: boolean;
+  visible: boolean;       // Use gridVisible in GridConfigState
 }

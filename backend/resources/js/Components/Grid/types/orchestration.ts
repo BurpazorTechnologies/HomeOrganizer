@@ -14,12 +14,13 @@ export type ClickTarget = 'canvas' | 'shape' | 'other';
 
 /**
  * Click context - information about where the user clicked
+ * Note: event is optional to support event-driven clicks via EventBus
  */
 export interface ClickContext {
   target: ClickTarget;
   position: { x: number; y: number };
   shapeId?: string;
-  event: Konva.KonvaEventObject<MouseEvent>;
+  event?: Konva.KonvaEventObject<MouseEvent>;
 }
 
 /**

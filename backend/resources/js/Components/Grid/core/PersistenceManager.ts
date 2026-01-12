@@ -14,6 +14,7 @@
 import { localStorageService, type SavedData, type ShapeData, type ChildAreaData } from '@/Services/localStorage';
 import type { Shape } from '@/Components/Grid/types/shapes';
 import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
+import type { EventBus } from '@/Components/Grid/core/events';
 
 /**
  * Storage adapter interface - implement this for different backends
@@ -122,7 +123,7 @@ export class PersistenceManager {
   private adapter: StorageAdapter;
   private managers: ManagerInstances | null = null;
   private store: GridStateStore | null = null;
-  private onDataChangeCallbacks: Array<(data: GridPersistenceData | null) => void> = [];
+  private eventBus: EventBus | null = null;
 
   constructor(adapter?: StorageAdapter) {
     this.adapter = adapter || new LocalStorageAdapter();
@@ -143,17 +144,22 @@ export class PersistenceManager {
   }
 
   /**
-   * Register callback for data changes
+   * Set the EventBus for event-driven communication
    */
-  onDataChange(callback: (data: GridPersistenceData | null) => void): void {
-    this.onDataChangeCallbacks.push(callback);
+  setEventBus(eventBus: EventBus): void {
+    this.eventBus = eventBus;
   }
 
   /**
-   * Notify all listeners of data change
+   * Notify all listeners of data change via EventBus
    */
-  private notifyDataChange(data: GridPersistenceData | null): void {
-    this.onDataChangeCallbacks.forEach(cb => cb(data));
+  private notifyDataChange(source: 'save' | 'load' | 'clear'): void {
+    if (this.eventBus) {
+      this.eventBus.emit({
+        type: 'DATA_CHANGED',
+        payload: { source },
+      });
+    }
   }
 
   /**
@@ -184,7 +190,7 @@ export class PersistenceManager {
     existingData.lastUpdated = new Date().toISOString();
 
     await this.adapter.save(existingData);
-    this.notifyDataChange(existingData);
+    this.notifyDataChange('save');
 
     console.log('PersistenceManager: Saved home area', existingData.homeArea);
   }
@@ -220,7 +226,7 @@ export class PersistenceManager {
     existingData.lastUpdated = new Date().toISOString();
 
     await this.adapter.save(existingData);
-    this.notifyDataChange(existingData);
+    this.notifyDataChange('save');
 
     console.log('PersistenceManager: Saved child areas for parent', parentAreaId, existingData.childAreas[parentAreaId]);
   }
@@ -241,7 +247,7 @@ export class PersistenceManager {
     existingData.lastUpdated = new Date().toISOString();
 
     await this.adapter.save(existingData);
-    this.notifyDataChange(existingData);
+    this.notifyDataChange('save');
 
     console.log('PersistenceManager: Saved area hierarchy', hierarchyData);
   }
@@ -483,7 +489,7 @@ export class PersistenceManager {
    */
   async clear(): Promise<void> {
     await this.adapter.clear();
-    this.notifyDataChange(null);
+    this.notifyDataChange('clear');
     console.log('PersistenceManager: Cleared all data');
   }
 

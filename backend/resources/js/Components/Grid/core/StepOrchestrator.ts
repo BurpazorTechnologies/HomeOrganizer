@@ -3,6 +3,10 @@
  *
  * Central coordinator for step-based behavior.
  * Uses declarative configuration instead of step classes.
+ *
+ * Event-driven architecture:
+ * - Emits STEP_INFO_CHANGED events via EventBus when step state changes
+ * - Subscribe to STEP_INFO_CHANGED via EventBus for step updates
  */
 
 import type Konva from 'konva';
@@ -17,13 +21,14 @@ import type {
 import { STEPS, createStep } from '@/Components/Grid/types/steps';
 import { SHAPE_COLORS } from '@/Components/Grid/types/constants';
 import { StepHandlers } from '@/Components/Grid/steps/StepHandlers';
+import type { EventBus } from '@/Components/Grid/core/events';
 
 export class StepOrchestrator {
   private stepConfigs: Map<number, StepConfiguration> = new Map();
   private currentStepConfig: StepConfiguration;
   private currentState: StepState;
   private managers: ManagerInstances;
-  private onStepChangeCallback?: (stepInfo: StepInfo) => void;
+  private eventBus: EventBus | null = null;
 
   constructor(managers: ManagerInstances) {
     this.managers = managers;
@@ -121,9 +126,37 @@ export class StepOrchestrator {
 
   /**
    * Handle click events - delegate to handler with config + state
+   * @deprecated Use handleClickFromEvent instead - kept for backwards compatibility
    */
   handleClick(event: Konva.KonvaEventObject<MouseEvent>, stage: Konva.Stage): void {
     const context = this.buildClickContext(event, stage);
+
+    // Delegate to step handler with configuration
+    StepHandlers.handleClick(
+      context,
+      this.currentStepConfig,
+      this.currentState,
+      this.managers
+    );
+
+    this.notifyStepChange();
+  }
+
+  /**
+   * Handle click events from EventBus - receives pre-extracted data instead of raw Konva event
+   * This is the new event-driven approach used by EventManager
+   */
+  handleClickFromEvent(
+    worldPosition: { x: number; y: number },
+    target: 'canvas' | 'shape' | 'other',
+    shapeId?: string
+  ): void {
+    const context: ClickContext = {
+      target,
+      position: worldPosition,
+      shapeId,
+      event: undefined, // No raw event in event-driven approach
+    };
 
     // Delegate to step handler with configuration
     StepHandlers.handleClick(
@@ -534,18 +567,23 @@ export class StepOrchestrator {
   }
 
   /**
-   * Register callback for step changes
+   * Set the EventBus for event-driven communication
    */
-  onStepChange(callback: (stepInfo: StepInfo) => void): void {
-    this.onStepChangeCallback = callback;
+  setEventBus(eventBus: EventBus): void {
+    this.eventBus = eventBus;
   }
 
   /**
-   * Notify listeners of step change
+   * Notify listeners of step change via EventBus
    */
   private notifyStepChange(): void {
-    if (this.onStepChangeCallback) {
-      this.onStepChangeCallback(this.getCurrentStepInfo());
+    if (this.eventBus) {
+      this.eventBus.emit({
+        type: 'STEP_INFO_CHANGED',
+        payload: {
+          stepInfo: this.getCurrentStepInfo(),
+        },
+      });
     }
   }
 

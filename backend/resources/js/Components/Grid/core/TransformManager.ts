@@ -2,6 +2,7 @@ import Konva from 'konva';
 import { TRANSFORMER_CONFIG, GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 import type { BoundsService } from '@/Components/Grid/core/services/BoundsService';
 import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
+import type { EventBus } from '@/Components/Grid/core/events';
 
 /**
  * TransformManager
@@ -9,7 +10,7 @@ import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore
  * Manages shape transformations (resize, rotate, etc.):
  * - Handles Konva Transformer for resize handles
  * - Provides grid snapping during transforms
- * - Emits events when shapes are transformed
+ * - Emits SHAPE_TRANSFORM_ENDED events via EventBus when shapes are transformed
  * - Uses BoundsService for live parent bounds (never stale)
  * - Reads gridSize/snapEnabled from store (single source of truth)
  */
@@ -19,17 +20,11 @@ export class TransformManager {
     private transformer: Konva.Transformer;
     private boundsService: BoundsService | null = null;
     private store: GridStateStore | null = null;
+    private eventBus: EventBus | null = null;
 
     // Fallback values (used if store not available)
     private _fallbackGridSize: number;
     private _fallbackSnapEnabled: boolean;
-
-    private onTransformCallback?: (shapeId: string, dimensions: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    }) => void;
 
     constructor(
         stage: Konva.Stage,
@@ -149,13 +144,19 @@ export class TransformManager {
             shape.width(snappedWidth);
             shape.height(snappedHeight);
 
-            // Notify callback
-            if (this.onTransformCallback) {
-                this.onTransformCallback(shapeId, {
-                    x: snappedX,
-                    y: snappedY,
-                    width: snappedWidth,
-                    height: snappedHeight,
+            // Emit transform ended event via EventBus
+            if (this.eventBus) {
+                this.eventBus.emit({
+                    type: 'SHAPE_TRANSFORM_ENDED',
+                    payload: {
+                        shapeId,
+                        dimensions: {
+                            x: snappedX,
+                            y: snappedY,
+                            width: snappedWidth,
+                            height: snappedHeight,
+                        },
+                    },
                 });
             }
 
@@ -195,15 +196,10 @@ export class TransformManager {
     }
 
     /**
-     * Set callback for when shapes are transformed
+     * Set the EventBus for event-driven communication
      */
-    onTransform(callback: (shapeId: string, dimensions: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    }) => void): void {
-        this.onTransformCallback = callback;
+    setEventBus(eventBus: EventBus): void {
+        this.eventBus = eventBus;
     }
 
     /**

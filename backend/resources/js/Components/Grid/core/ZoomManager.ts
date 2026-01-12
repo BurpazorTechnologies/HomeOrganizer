@@ -8,24 +8,32 @@
  * - Uses FIXED INCREMENTS (e.g., 0.25) for clean zoom levels: 25%, 50%, 75%, 100%, 125%, etc.
  *
  * State is stored in GridStateStore for centralized state management.
+ *
+ * Event-driven architecture:
+ * - Store emits ZOOM_CHANGED events after zoom mutations
+ * - Other managers subscribe to these events via EventBus
  */
 
 import type Konva from 'konva';
 import { GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
+import type { EventBus } from '@/Components/Grid/core/events';
 
 export interface ZoomManagerConfig {
   store: GridStateStore;
+  /** Optional EventBus for event-driven communication */
+  eventBus?: EventBus;
 }
 
 export class ZoomManager {
   private stage: Konva.Stage;
   private store: GridStateStore;
-  private onZoomChangeCallback?: (zoom: number) => void;
+  private eventBus?: EventBus;
 
   constructor(stage: Konva.Stage, config: ZoomManagerConfig) {
     this.stage = stage;
     this.store = config.store;
+    this.eventBus = config.eventBus;
   }
 
   /**
@@ -114,10 +122,8 @@ export class ZoomManager {
     this.stage.scale({ x: clampedZoom, y: clampedZoom });
     this.stage.batchDraw();
 
-    // Notify callback
-    if (this.onZoomChangeCallback) {
-      this.onZoomChangeCallback(clampedZoom);
-    }
+    // Note: ZOOM_CHANGED event is emitted by store.setZoom() above
+    // Subscribers should listen to EventBus for zoom changes
   }
 
   /**
@@ -132,13 +138,6 @@ export class ZoomManager {
    */
   canZoomOut(): boolean {
     return this.getCurrentZoom() > GRID_CONSTANTS.MIN_ZOOM;
-  }
-
-  /**
-   * Register callback for zoom changes
-   */
-  onZoomChange(callback: (zoom: number) => void): void {
-    this.onZoomChangeCallback = callback;
   }
 
   /**

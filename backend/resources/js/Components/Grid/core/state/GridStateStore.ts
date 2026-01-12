@@ -10,153 +10,57 @@
  * - Managers read from store, don't maintain duplicate state
  * - Serialization/deserialization happens here
  * - ALL mutations are tracked via MutationTracker for debugging
+ * - Events are emitted after mutations (via optional EventBus)
  */
 
 import { reactive, readonly, type DeepReadonly } from 'vue';
 import type { Bounds } from '../utils/bounds';
 import { createMutationTracker, type MutationTracker, type MutationRecord } from './MutationTracker';
 
-// ==================== State Interfaces ====================
+// Import EventBus types
+import type { EventBus, GridEvent } from '../events';
 
-/**
- * Area type - semantic classification of a shape
- * Shapes with areaType set participate in the hierarchical area structure
- */
-export type AreaType = 'home' | 'floor' | 'area' | 'room';
+// Import command types
+import type { GridCommand, CommandResult } from '../commands';
 
-/**
- * Shape state - represents a single shape in the grid
- *
- * Shapes can optionally be "areas" - semantic containers with hierarchy.
- * When areaType is set (not null), the shape participates in the area hierarchy.
- * This eliminates the need for a separate AreaManager - areas ARE shapes.
- */
-export interface ShapeState {
-  id: string;
-  type: 'rectangle' | 'circle';
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  fill: string;
-  stroke: string;
-  strokeWidth: number;
-  label: string;
-  layerId: string;
-  parentShapeId: string | null;  // Parent shape for bounds constraints
-  zIndex: number;
+// Import canonical state types from types/state/
+import type {
+  ShapeState,
+  LayerState,
+  AreaState,
+  SelectionState,
+  ViewportState,
+  GridConfigState,
+  ActionLockState,
+  ActionType,
+  AreaType,
+  GridState,
+  SerializedGridState,
+} from '../../types/state';
 
-  // Area semantics (optional - null means plain shape, not an area)
-  areaType: AreaType | null;           // null = plain shape, set = area shape
-  childShapeIds: string[];             // IDs of child shapes (for area hierarchy)
-  depth: number;                       // Nesting level (0 = root, 1+= children)
-  metadata?: Record<string, unknown>;  // Area metadata (colors, floor, etc.)
-}
+// Import default values
+import {
+  DEFAULT_SELECTION_STATE,
+  DEFAULT_VIEWPORT_STATE,
+  DEFAULT_GRID_CONFIG_STATE,
+  DEFAULT_ACTION_LOCK_STATE,
+} from '../../types/state';
 
-/**
- * Layer state - represents a Konva layer group
- */
-export interface LayerState {
-  id: string;
-  stepId: string;
-  order: number;
-  label: string;
-  shapeIds: string[];
-  primaryShapeId: string | null;
-  parentLayerId: string | null;
-  areaId?: string;
-  // Layer lock state - when locked, shapes in this layer cannot be interacted with
-  isLocked: boolean;
-}
-
-/**
- * Area state - represents a hierarchical area
- */
-export interface AreaState {
-  id: string;
-  type: 'home' | 'floor' | 'area' | 'room';
-  label: string;
-  shapeId: string;
-  layerId: string;
-  parentId: string | null;
-  childIds: string[];
-  depth: number;
-  metadata?: Record<string, unknown>;
-}
-
-/**
- * Selection state - tracks what's currently selected
- */
-export interface SelectionState {
-  selectedShapeId: string | null;
-  selectedLayerId: string | null;
-  isParentSelected: boolean;
-}
-
-/**
- * Viewport state - tracks zoom and pan
- */
-export interface ViewportState {
-  zoom: number;
-  pan: { x: number; y: number };
-}
-
-/**
- * Action types - only one action can be active at a time
- * This prevents bugs from multi-action conflicts
- */
-export type ActionType = 'idle' | 'panning' | 'zooming' | 'dragging' | 'resizing' | 'creating';
-
-/**
- * Action lock state - tracks which action is currently active
- */
-export interface ActionLockState {
-  currentAction: ActionType;
-  lockedBy: string | null;  // ID of the element/manager that acquired the lock
-}
-
-/**
- * Grid configuration state - centralized grid settings
- * Previously duplicated across ShapeManager, TransformManager, GridManager
- */
-export interface GridConfigState {
-  gridSize: number;
-  snapEnabled: boolean;
-  gridVisible: boolean;
-}
-
-/**
- * Complete grid state
- */
-export interface GridState {
-  shapes: Map<string, ShapeState>;
-  layers: Map<string, LayerState>;
-  areas: Map<string, AreaState>;
-  selection: SelectionState;
-  viewport: ViewportState;
-  gridConfig: GridConfigState;
-  actionLock: ActionLockState;
-  currentLayerId: string | null;
-  currentStep: number;
-  isSaved: boolean;
-  rootAreaId: string | null;
-  // NEW: Root shape ID for unified shape/area hierarchy
-  // Will replace rootAreaId once migration to unified model is complete
-  rootShapeId: string | null;
-}
-
-/**
- * Serialized format for persistence
- */
-export interface SerializedGridState {
-  version: string;
-  shapes: ShapeState[];
-  layers: LayerState[];
-  areas: AreaState[];  // Legacy - will be empty after migration
-  currentStep: number;
-  rootAreaId: string | null;  // Legacy - use rootShapeId after migration
-  rootShapeId: string | null;
-}
+// Re-export all state types for backwards compatibility
+// This allows existing code to import from GridStateStore without changes
+export type {
+  ShapeState,
+  LayerState,
+  AreaState,
+  SelectionState,
+  ViewportState,
+  GridConfigState,
+  ActionLockState,
+  ActionType,
+  AreaType,
+  GridState,
+  SerializedGridState,
+};
 
 // ==================== Store Type ====================
 
@@ -251,40 +155,49 @@ export interface GridStateStore {
   getCurrentAction(): ActionType;
   isActionAllowed(action: ActionType): boolean;
   getActionLock(): ActionLockState;
+
+  // Command dispatch (CQRS pattern)
+  /**
+   * Dispatch a command to mutate state.
+   * This is the preferred way to modify state - all commands go through handlers.
+   *
+   * @example
+   * store.dispatch({ type: 'SHAPE_CREATE', payload: { shape } });
+   * store.dispatch({ type: 'LAYER_LOCK', payload: { layerId: 'layer1' } });
+   */
+  dispatch(command: GridCommand): CommandResult<unknown>;
 }
 
 // ==================== Store Factory ====================
 
 /**
- * Create a new GridStateStore instance
+ * Options for creating a GridStateStore
  */
-export function createGridStateStore(): GridStateStore {
+export interface GridStateStoreOptions {
+  /** Optional EventBus for emitting events after mutations */
+  eventBus?: EventBus;
+}
+
+/**
+ * Create a new GridStateStore instance
+ * @param options Optional configuration including EventBus
+ */
+export function createGridStateStore(options: GridStateStoreOptions = {}): GridStateStore {
+  // Optional event bus for event-driven architecture
+  const eventBus = options.eventBus;
+
   // Mutation tracker for debugging
   const tracker: MutationTracker = createMutationTracker(100);
 
-  // Reactive state
+  // Reactive state - using imported defaults from types/state/
   const state = reactive<GridState>({
     shapes: new Map(),
     layers: new Map(),
     areas: new Map(),
-    selection: {
-      selectedShapeId: null,
-      selectedLayerId: null,
-      isParentSelected: false,
-    },
-    viewport: {
-      zoom: 1.0,
-      pan: { x: 0, y: 0 },
-    },
-    gridConfig: {
-      gridSize: 20,
-      snapEnabled: true,
-      gridVisible: true,
-    },
-    actionLock: {
-      currentAction: 'idle',
-      lockedBy: null,
-    },
+    selection: { ...DEFAULT_SELECTION_STATE },
+    viewport: { ...DEFAULT_VIEWPORT_STATE, pan: { ...DEFAULT_VIEWPORT_STATE.pan } },
+    gridConfig: { ...DEFAULT_GRID_CONFIG_STATE },
+    actionLock: { ...DEFAULT_ACTION_LOCK_STATE },
     currentLayerId: null,
     currentStep: 1,
     isSaved: false,
@@ -305,6 +218,15 @@ export function createGridStateStore(): GridStateStore {
     shapeListeners.get(shapeId)?.forEach(listener => listener(shape));
   }
 
+  /**
+   * Emit an event if EventBus is configured
+   */
+  function emit(event: GridEvent): void {
+    if (eventBus) {
+      eventBus.emit(event);
+    }
+  }
+
   // Store implementation
   const store: GridStateStore = {
     get state() {
@@ -318,6 +240,7 @@ export function createGridStateStore(): GridStateStore {
       state.shapes.set(shape.id, { ...shape });
       notify();
       notifyShapeChange(shape.id);
+      emit({ type: 'SHAPE_CREATED', payload: { shapeId: shape.id, shape: { ...shape } } });
     },
 
     updateShape(id: string, updates: Partial<Omit<ShapeState, 'id'>>): void {
@@ -328,13 +251,15 @@ export function createGridStateStore(): GridStateStore {
         tracker.record('SHAPE/UPDATE', ['shapes', id], prevState, { ...shape });
         notify();
         notifyShapeChange(id);
+        emit({ type: 'SHAPE_UPDATED', payload: { shapeId: id, updates, previousState: prevState } });
       }
     },
 
     removeShape(id: string): void {
       const shape = state.shapes.get(id);
       if (shape) {
-        tracker.record('SHAPE/REMOVE', ['shapes', id], { ...shape }, null);
+        const deletedShape = { ...shape };
+        tracker.record('SHAPE/REMOVE', ['shapes', id], deletedShape, null);
         state.shapes.delete(id);
         // Clear selection if this was selected
         if (state.selection.selectedShapeId === id) {
@@ -344,6 +269,7 @@ export function createGridStateStore(): GridStateStore {
         }
         notify();
         notifyShapeChange(id);
+        emit({ type: 'SHAPE_DELETED', payload: { shapeId: id, shape: deletedShape } });
       }
     },
 
@@ -383,6 +309,7 @@ export function createGridStateStore(): GridStateStore {
       tracker.record('LAYER/ADD', ['layers', layer.id], null, { ...layerWithDefaults });
       state.layers.set(layer.id, layerWithDefaults);
       notify();
+      emit({ type: 'LAYER_CREATED', payload: { layerId: layer.id, layer: { ...layerWithDefaults } } });
     },
 
     updateLayer(id: string, updates: Partial<Omit<LayerState, 'id'>>): void {
@@ -392,18 +319,21 @@ export function createGridStateStore(): GridStateStore {
         Object.assign(layer, updates);
         tracker.record('LAYER/UPDATE', ['layers', id], prevState, { ...layer, shapeIds: [...layer.shapeIds] });
         notify();
+        emit({ type: 'LAYER_UPDATED', payload: { layerId: id, updates, previousState: prevState } });
       }
     },
 
     removeLayer(id: string): void {
       const layer = state.layers.get(id);
       if (layer) {
-        tracker.record('LAYER/REMOVE', ['layers', id], { ...layer, shapeIds: [...layer.shapeIds] }, null);
+        const deletedLayer = { ...layer, shapeIds: [...layer.shapeIds] };
+        tracker.record('LAYER/REMOVE', ['layers', id], deletedLayer, null);
         state.layers.delete(id);
         if (state.currentLayerId === id) {
           state.currentLayerId = null;
         }
         notify();
+        emit({ type: 'LAYER_DELETED', payload: { layerId: id, layer: deletedLayer } });
       }
     },
 
@@ -416,6 +346,7 @@ export function createGridStateStore(): GridStateStore {
       state.currentLayerId = id;
       tracker.record('LAYER/SET_CURRENT', ['currentLayerId'], prev, id);
       notify();
+      emit({ type: 'CURRENT_LAYER_CHANGED', payload: { layerId: id, previousLayerId: prev } });
     },
 
     addShapeToLayer(layerId: string, shapeId: string, isPrimary = false): void {
@@ -434,6 +365,7 @@ export function createGridStateStore(): GridStateStore {
           { shapeIds: [...layer.shapeIds], primaryShapeId: layer.primaryShapeId }
         );
         notify();
+        emit({ type: 'LAYER_SHAPE_ADDED', payload: { layerId, shapeId, isPrimary } });
       }
     },
 
@@ -451,6 +383,7 @@ export function createGridStateStore(): GridStateStore {
           { shapeIds: [...layer.shapeIds], primaryShapeId: layer.primaryShapeId }
         );
         notify();
+        emit({ type: 'LAYER_SHAPE_REMOVED', payload: { layerId, shapeId } });
       }
     },
 
@@ -463,6 +396,7 @@ export function createGridStateStore(): GridStateStore {
         layer.isLocked = true;
         tracker.record('LAYER/LOCK', ['layers', layerId, 'isLocked'], prev, true);
         notify();
+        emit({ type: 'LAYER_LOCKED', payload: { layerId } });
       }
     },
 
@@ -473,6 +407,7 @@ export function createGridStateStore(): GridStateStore {
         layer.isLocked = false;
         tracker.record('LAYER/UNLOCK', ['layers', layerId, 'isLocked'], prev, false);
         notify();
+        emit({ type: 'LAYER_UNLOCKED', payload: { layerId } });
       }
     },
 
@@ -497,6 +432,7 @@ export function createGridStateStore(): GridStateStore {
       tracker.record('AREA/ADD', ['areas', area.id], null, { ...area, childIds: [...area.childIds] });
       state.areas.set(area.id, { ...area });
       notify();
+      emit({ type: 'AREA_CREATED', payload: { areaId: area.id, area: { ...area, childIds: [...area.childIds] } } });
     },
 
     updateArea(id: string, updates: Partial<Omit<AreaState, 'id'>>): void {
@@ -506,13 +442,15 @@ export function createGridStateStore(): GridStateStore {
         Object.assign(area, updates);
         tracker.record('AREA/UPDATE', ['areas', id], prevState, { ...area, childIds: [...area.childIds] });
         notify();
+        emit({ type: 'AREA_UPDATED', payload: { areaId: id, updates, previousState: prevState } });
       }
     },
 
     removeArea(id: string): void {
       const area = state.areas.get(id);
       if (area) {
-        tracker.record('AREA/REMOVE', ['areas', id], { ...area, childIds: [...area.childIds] }, null);
+        const deletedArea = { ...area, childIds: [...area.childIds] };
+        tracker.record('AREA/REMOVE', ['areas', id], deletedArea, null);
         // Remove from parent's childIds
         if (area.parentId) {
           const parent = state.areas.get(area.parentId);
@@ -525,6 +463,7 @@ export function createGridStateStore(): GridStateStore {
           state.rootAreaId = null;
         }
         notify();
+        emit({ type: 'AREA_DELETED', payload: { areaId: id, area: deletedArea } });
       }
     },
 
@@ -546,6 +485,7 @@ export function createGridStateStore(): GridStateStore {
       state.rootAreaId = id;
       tracker.record('AREA/SET_ROOT', ['rootAreaId'], prev, id);
       notify();
+      emit({ type: 'ROOT_AREA_CHANGED', payload: { rootAreaId: id, previousRootAreaId: prev } });
     },
 
     // ==================== Unified Shape/Area Operations ====================
@@ -555,6 +495,7 @@ export function createGridStateStore(): GridStateStore {
       state.rootShapeId = id;
       tracker.record('SHAPE/SET_ROOT', ['rootShapeId'], prev, id);
       notify();
+      emit({ type: 'ROOT_SHAPE_CHANGED', payload: { rootShapeId: id, previousRootShapeId: prev } });
     },
 
     getRootShapeId(): string | null {
@@ -589,6 +530,7 @@ export function createGridStateStore(): GridStateStore {
           parent.childShapeIds.push(childId);
           tracker.record('SHAPE/ADD_CHILD', ['shapes', parentId, 'childShapeIds'], prevChildIds, [...parent.childShapeIds]);
           notify();
+          emit({ type: 'SHAPE_CHILD_ADDED', payload: { parentId, childId } });
         }
       }
     },
@@ -600,6 +542,7 @@ export function createGridStateStore(): GridStateStore {
         parent.childShapeIds = parent.childShapeIds.filter(id => id !== childId);
         tracker.record('SHAPE/REMOVE_CHILD', ['shapes', parentId, 'childShapeIds'], prevChildIds, [...parent.childShapeIds]);
         notify();
+        emit({ type: 'SHAPE_CHILD_REMOVED', payload: { parentId, childId } });
       }
     },
 
@@ -612,6 +555,7 @@ export function createGridStateStore(): GridStateStore {
       state.selection.isParentSelected = isParent;
       tracker.record('SELECTION/SELECT', ['selection'], prev, { ...state.selection });
       notify();
+      emit({ type: 'SELECTION_CHANGED', payload: { selection: { ...state.selection }, previousSelection: prev } });
     },
 
     deselect(): void {
@@ -621,6 +565,7 @@ export function createGridStateStore(): GridStateStore {
       state.selection.isParentSelected = false;
       tracker.record('SELECTION/DESELECT', ['selection'], prev, { ...state.selection });
       notify();
+      emit({ type: 'SELECTION_CLEARED', payload: { previousSelection: prev } });
     },
 
     getSelectedShape(): ShapeState | undefined {
@@ -635,6 +580,7 @@ export function createGridStateStore(): GridStateStore {
       state.currentStep = step;
       tracker.record('STEP/SET_CURRENT', ['currentStep'], prev, step);
       notify();
+      emit({ type: 'STEP_CHANGED', payload: { step, previousStep: prev } });
     },
 
     setIsSaved(saved: boolean): void {
@@ -642,6 +588,7 @@ export function createGridStateStore(): GridStateStore {
       state.isSaved = saved;
       tracker.record('STEP/SET_SAVED', ['isSaved'], prev, saved);
       notify();
+      emit({ type: 'SAVED_STATE_CHANGED', payload: { isSaved: saved, previousIsSaved: prev } });
     },
 
     // ==================== Viewport Operations ====================
@@ -651,6 +598,7 @@ export function createGridStateStore(): GridStateStore {
       state.viewport.zoom = zoom;
       tracker.record('VIEWPORT/SET_ZOOM', ['viewport', 'zoom'], prev, zoom);
       notify();
+      emit({ type: 'ZOOM_CHANGED', payload: { zoom, previousZoom: prev } });
     },
 
     setPan(pan: { x: number; y: number }): void {
@@ -658,6 +606,7 @@ export function createGridStateStore(): GridStateStore {
       state.viewport.pan = { ...pan };
       tracker.record('VIEWPORT/SET_PAN', ['viewport', 'pan'], prev, { ...pan });
       notify();
+      emit({ type: 'PAN_CHANGED', payload: { pan: { ...pan }, previousPan: prev } });
     },
 
     setViewport(viewport: Partial<ViewportState>): void {
@@ -670,6 +619,7 @@ export function createGridStateStore(): GridStateStore {
       }
       tracker.record('VIEWPORT/SET', ['viewport'], prev, { ...state.viewport, pan: { ...state.viewport.pan } });
       notify();
+      emit({ type: 'VIEWPORT_CHANGED', payload: { viewport: { ...state.viewport, pan: { ...state.viewport.pan } }, previousViewport: prev } });
     },
 
     getViewport(): ViewportState {
@@ -686,6 +636,7 @@ export function createGridStateStore(): GridStateStore {
       state.gridConfig.gridSize = size;
       tracker.record('GRID_CONFIG/SET_SIZE', ['gridConfig', 'gridSize'], prev, size);
       notify();
+      emit({ type: 'GRID_SIZE_CHANGED', payload: { gridSize: size, previousGridSize: prev } });
     },
 
     setSnapEnabled(enabled: boolean): void {
@@ -693,6 +644,7 @@ export function createGridStateStore(): GridStateStore {
       state.gridConfig.snapEnabled = enabled;
       tracker.record('GRID_CONFIG/SET_SNAP', ['gridConfig', 'snapEnabled'], prev, enabled);
       notify();
+      emit({ type: 'SNAP_ENABLED_CHANGED', payload: { snapEnabled: enabled, previousSnapEnabled: prev } });
     },
 
     setGridVisible(visible: boolean): void {
@@ -700,6 +652,7 @@ export function createGridStateStore(): GridStateStore {
       state.gridConfig.gridVisible = visible;
       tracker.record('GRID_CONFIG/SET_VISIBLE', ['gridConfig', 'gridVisible'], prev, visible);
       notify();
+      emit({ type: 'GRID_VISIBLE_CHANGED', payload: { gridVisible: visible, previousGridVisible: prev } });
     },
 
     setGridConfig(config: Partial<GridConfigState>): void {
@@ -715,6 +668,7 @@ export function createGridStateStore(): GridStateStore {
       }
       tracker.record('GRID_CONFIG/SET', ['gridConfig'], prev, { ...state.gridConfig });
       notify();
+      emit({ type: 'GRID_CONFIG_CHANGED', payload: { config: { ...state.gridConfig }, previousConfig: prev } });
     },
 
     getGridConfig(): GridConfigState {
@@ -808,9 +762,15 @@ export function createGridStateStore(): GridStateStore {
       state.currentLayerId = null;
 
       notify();
+      emit({ type: 'STORE_DESERIALIZED', payload: { shapesCount: data.shapes.length, layersCount: data.layers.length, areasCount: data.areas.length } });
     },
 
     clear(): void {
+      const prevCounts = {
+        previousShapesCount: state.shapes.size,
+        previousLayersCount: state.layers.size,
+        previousAreasCount: state.areas.size,
+      };
       tracker.record('STORE/CLEAR', ['*'], {
         shapesCount: state.shapes.size,
         layersCount: state.layers.size,
@@ -820,30 +780,17 @@ export function createGridStateStore(): GridStateStore {
       state.shapes.clear();
       state.layers.clear();
       state.areas.clear();
-      state.selection = {
-        selectedShapeId: null,
-        selectedLayerId: null,
-        isParentSelected: false,
-      };
-      state.viewport = {
-        zoom: 1.0,
-        pan: { x: 0, y: 0 },
-      };
-      state.gridConfig = {
-        gridSize: 20,
-        snapEnabled: true,
-        gridVisible: true,
-      };
-      state.actionLock = {
-        currentAction: 'idle',
-        lockedBy: null,
-      };
+      state.selection = { ...DEFAULT_SELECTION_STATE };
+      state.viewport = { ...DEFAULT_VIEWPORT_STATE, pan: { ...DEFAULT_VIEWPORT_STATE.pan } };
+      state.gridConfig = { ...DEFAULT_GRID_CONFIG_STATE };
+      state.actionLock = { ...DEFAULT_ACTION_LOCK_STATE };
       state.currentLayerId = null;
       state.currentStep = 1;
       state.isSaved = false;
       state.rootAreaId = null;
       state.rootShapeId = null;
       notify();
+      emit({ type: 'STORE_CLEARED', payload: prevCounts });
     },
 
     // ==================== Subscriptions ====================
@@ -899,6 +846,7 @@ export function createGridStateStore(): GridStateStore {
           console.log(`[ActionLock] Acquired: ${action} by ${lockerId}`);
         }
         notify();
+        emit({ type: 'ACTION_LOCK_ACQUIRED', payload: { action, lockerId } });
         return true;
       }
 
@@ -921,6 +869,7 @@ export function createGridStateStore(): GridStateStore {
     releaseActionLock(lockerId: string): void {
       if (state.actionLock.lockedBy === lockerId) {
         const prev = { ...state.actionLock };
+        const prevAction = state.actionLock.currentAction;
         state.actionLock.currentAction = 'idle';
         state.actionLock.lockedBy = null;
         tracker.record('ACTION_LOCK/RELEASE', ['actionLock'], prev, { ...state.actionLock });
@@ -928,6 +877,7 @@ export function createGridStateStore(): GridStateStore {
           console.log(`[ActionLock] Released by ${lockerId}`);
         }
         notify();
+        emit({ type: 'ACTION_LOCK_RELEASED', payload: { action: prevAction, lockerId } });
       } else if (import.meta.env.DEV && state.actionLock.lockedBy !== null) {
         console.warn(`[ActionLock] Release denied: ${lockerId} tried to release lock held by ${state.actionLock.lockedBy}`);
       }
@@ -941,10 +891,13 @@ export function createGridStateStore(): GridStateStore {
       if (import.meta.env.DEV) {
         console.warn(`[ActionLock] Force release: was ${prev.currentAction} by ${prev.lockedBy}`);
       }
+      const prevAction = state.actionLock.currentAction;
+      const prevLockerId = state.actionLock.lockedBy;
       state.actionLock.currentAction = 'idle';
       state.actionLock.lockedBy = null;
       tracker.record('ACTION_LOCK/FORCE_RELEASE', ['actionLock'], prev, { ...state.actionLock });
       notify();
+      emit({ type: 'ACTION_LOCK_RELEASED', payload: { action: prevAction, lockerId: prevLockerId ?? 'force-release' } });
     },
 
     /**
@@ -966,6 +919,19 @@ export function createGridStateStore(): GridStateStore {
      */
     getActionLock(): ActionLockState {
       return { ...state.actionLock };
+    },
+
+    // ==================== Command Dispatch ====================
+
+    /**
+     * Dispatch a command to mutate state.
+     * Routes the command to the appropriate handler.
+     */
+    dispatch(command: GridCommand): CommandResult<unknown> {
+      // Import executeCommand dynamically to avoid circular dependency
+      // The handlers module imports GridStateStore type, so we need late binding
+      const { executeCommand } = require('../commands');
+      return executeCommand(command, store);
     },
   };
 

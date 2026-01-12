@@ -12,6 +12,7 @@ import { StepOrchestrator } from '@/Components/Grid/core/StepOrchestrator';
 import { EventManager } from '@/Components/Grid/core/EventManager';
 import { createGridStateStore, type GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
 import { createBoundsService, type BoundsService } from '@/Components/Grid/core/services/BoundsService';
+import { createEventBus, type EventBus } from '@/Components/Grid/core/events';
 
 /**
  * ManagerRegistry
@@ -54,9 +55,10 @@ export class ManagerRegistry {
   private _stage: Konva.Stage | null = null;
   private _gridLayer: Konva.Layer | null = null;
 
-  // Central state and services (NEW)
+  // Central state, services, and event bus
   private _store: GridStateStore | null = null;
   private _boundsService: BoundsService | null = null;
+  private _eventBus: EventBus | null = null;
 
   // Manager instances
   private _gridManager: GridManager | null = null;
@@ -133,8 +135,15 @@ export class ManagerRegistry {
       throw new Error('ManagerRegistry: Stage and gridLayer are required');
     }
 
-    // 0. Create central state store FIRST (foundation for everything)
-    this._store = createGridStateStore();
+    // 0a. Create EventBus FIRST (enables event-driven communication)
+    this._eventBus = createEventBus({
+      logging: import.meta.env.DEV, // Enable logging in development
+    });
+
+    // 0b. Create central state store with EventBus (foundation for everything)
+    this._store = createGridStateStore({
+      eventBus: this._eventBus,
+    });
 
     // Initialize store with config values
     this._store.setGridConfig({
@@ -143,18 +152,20 @@ export class ManagerRegistry {
       gridVisible: this._config.gridVisible ?? true,
     });
 
-    // 1. Grid Manager - depends on store for grid config
+    // 1. Grid Manager - depends on store for grid config, eventBus for auto-updates
     this._gridManager = new GridManager(this._stage, this._gridLayer, {
       size: this._config.gridSize,
       snapEnabled: this._config.snapToGrid,
       visible: this._config.gridVisible ?? true,
     });
     this._gridManager.setStore(this._store);
+    this._gridManager.setEventBus(this._eventBus);
     this._gridManager.redrawGrid();
 
-    // 2. Zoom Manager - depends on stage and store
+    // 2. Zoom Manager - depends on stage, store, and eventBus
     this._zoomManager = new ZoomManager(this._stage, {
       store: this._store,
+      eventBus: this._eventBus,
     });
 
     // 3. Create BoundsService - depends on store and zoom
@@ -172,7 +183,7 @@ export class ManagerRegistry {
     this._layerManager = new LayerManager(this._stage);
     this._layerManager.setStore(this._store);
 
-    // 5. Shape Manager - depends on stage, zoom manager, store, boundsService
+    // 5. Shape Manager - depends on stage, zoom manager, store, boundsService, eventBus
     this._shapeManager = new ShapeManager(this._stage, {
       gridSize: this._config.gridSize,
       snapEnabled: this._config.snapToGrid,
@@ -181,12 +192,13 @@ export class ManagerRegistry {
       boundsService: this._boundsService,
     });
     this._shapeManager.setLayerManager(this._layerManager);
+    this._shapeManager.setEventBus(this._eventBus);
 
     // 6. Area Manager - depends on store
     this._areaManager = new AreaManager();
     this._areaManager.setStore(this._store);
 
-    // 7. Transform Manager - depends on stage, layer manager, boundsService, store
+    // 7. Transform Manager - depends on stage, layer manager, boundsService, store, eventBus
     const transformOverlayLayer = this._layerManager.getTransformOverlayLayer();
     this._transformManager = new TransformManager(this._stage, transformOverlayLayer, {
       gridSize: this._config.gridSize,
@@ -194,13 +206,15 @@ export class ManagerRegistry {
       boundsService: this._boundsService,
       store: this._store,
     });
+    this._transformManager.setEventBus(this._eventBus);
 
     // 8. Label Manager - depends on layer manager
     this._labelManager = new LabelManager(this._layerManager);
 
-    // 9. Selection Manager - depends on shape manager, transform manager, store
+    // 9. Selection Manager - depends on shape manager, transform manager, store, eventBus
     this._selectionManager = new SelectionManager();
     this._selectionManager.setStore(this._store);
+    this._selectionManager.setEventBus(this._eventBus);
     this._selectionManager.setManagers({
       shapeManager: this._shapeManager,
       transformManager: this._transformManager,
@@ -209,7 +223,7 @@ export class ManagerRegistry {
     // Wire ShapeManager to SelectionManager (for selection queries)
     this._shapeManager.setSelectionManager(this._selectionManager);
 
-    // 10. Persistence Manager - depends on shape, layer, area, label managers, store
+    // 10. Persistence Manager - depends on shape, layer, area, label managers, store, eventBus
     this._persistenceManager = new PersistenceManager();
     this._persistenceManager.setManagers({
       shapeManager: this._shapeManager,
@@ -218,8 +232,9 @@ export class ManagerRegistry {
       labelManager: this._labelManager,
     });
     this._persistenceManager.setStore(this._store);
+    this._persistenceManager.setEventBus(this._eventBus);
 
-    // 11. Step Orchestrator - depends on all managers
+    // 11. Step Orchestrator - depends on all managers, eventBus
     this._stepOrchestrator = new StepOrchestrator({
       shapeManager: this._shapeManager,
       transformManager: this._transformManager,
@@ -232,121 +247,125 @@ export class ManagerRegistry {
       persistenceManager: this._persistenceManager,
       boundsService: this._boundsService,
     });
+    this._stepOrchestrator.setEventBus(this._eventBus);
 
-    // 12. Event Manager - centralizes all Konva event handling
+    // 12. Event Manager - centralizes all Konva event handling, emits events via EventBus
     // Only initialize if external callbacks are provided
     if (this._eventManagerExternalCallbacks) {
       this._eventManager = new EventManager(
         this._stage,
         this._store,
-        {
-          // Zoom callbacks
-          onZoomWheel: (delta) => {
-            this._zoomManager?.zoomWheel(delta);
-          },
-          onZoomEnd: () => {
-            this._callbacks.onZoomEnd?.();
-          },
-
-          // Pan callbacks
-          onPanStart: () => {
-            this._shapeManager?.setShapesDraggable(false);
-          },
-          onPanEnd: async (newPan, isPanMode) => {
-            await this._stepOrchestrator?.handlePanEnd(newPan, isPanMode);
-          },
-          onPanModeExit: async (currentPan) => {
-            await this._stepOrchestrator?.handlePanModeExit(currentPan);
-          },
-
-          // Click callbacks
-          onClick: (e, position) => {
-            this._callbacks.onClick?.(position);
-            this._stepOrchestrator?.handleClick(e, this._stage!);
-          },
-
-          // Shape drag callbacks
-          onShapeDragStart: (_shapeId) => {
-            // Shape drag start is handled by the event manager acquiring the lock
-          },
-          onShapeDragEnd: (shapeId) => {
-            const shape = this._shapeManager?.getShape(shapeId);
-            if (shape) {
-              this._labelManager?.updateLabel(shapeId, {
-                x: shape.x,
-                y: shape.y,
-                width: shape.width,
-                height: shape.height,
-              });
-            }
-            // Emit step change to update UI
-            if (this._callbacks.onStepChange && this._stepOrchestrator) {
-              const stepInfo = this._stepOrchestrator.getCurrentStepInfo();
-              this._callbacks.onStepChange(stepInfo);
-            }
-          },
-
-          // External callbacks from component
-          getIsPanMode: this._eventManagerExternalCallbacks.getIsPanMode,
-          setIsPanMode: this._eventManagerExternalCallbacks.setIsPanMode,
-          refreshDebugState: this._eventManagerExternalCallbacks.refreshDebugState,
-        }
+        this._eventBus,
+        this._eventManagerExternalCallbacks
       );
 
       // Initialize event bindings
       this._eventManager.initialize();
     }
+
+    // 13. Subscribe to EventManager events via EventBus
+    this._setupEventSubscriptions();
   }
 
   /**
-   * Wire up callbacks to managers
+   * Set up EventBus subscriptions for EventManager events
+   * This replaces the old callback-based wiring
+   */
+  private _setupEventSubscriptions(): void {
+    if (!this._eventBus) return;
+
+    // Handle wheel zoom events
+    this._eventBus.on('WHEEL_ZOOM', ({ delta }) => {
+      this._zoomManager?.zoomWheel(delta);
+    });
+
+    // Handle pan started events - disable shape dragging
+    this._eventBus.on('PAN_STARTED', () => {
+      this._shapeManager?.setShapesDraggable(false);
+    });
+
+    // Handle pan orchestration requests
+    this._eventBus.on('PAN_ORCHESTRATION_REQUESTED', async ({ type, panPosition, stayInPanMode }) => {
+      if (type === 'pan_end') {
+        await this._stepOrchestrator?.handlePanEnd(panPosition, stayInPanMode ?? false);
+      } else if (type === 'pan_mode_exit') {
+        await this._stepOrchestrator?.handlePanModeExit(panPosition);
+      }
+    });
+
+    // Handle canvas click events
+    this._eventBus.on('CANVAS_CLICKED', ({ position, worldPosition, target, shapeId }) => {
+      // Call external callback
+      this._callbacks.onClick?.(position);
+
+      // Delegate to step orchestrator for handling clicks
+      // Note: We pass the world position and target info instead of the raw Konva event
+      this._stepOrchestrator?.handleClickFromEvent(worldPosition, target, shapeId);
+    });
+
+    // Handle shape drag ended events - update labels
+    this._eventBus.on('SHAPE_DRAG_ENDED', ({ shapeId }) => {
+      const shape = this._shapeManager?.getShape(shapeId);
+      if (shape) {
+        this._labelManager?.updateLabel(shapeId, {
+          x: shape.x,
+          y: shape.y,
+          width: shape.width,
+          height: shape.height,
+        });
+      }
+      // Emit step change to update UI
+      if (this._callbacks.onStepChange && this._stepOrchestrator) {
+        const stepInfo = this._stepOrchestrator.getCurrentStepInfo();
+        this._callbacks.onStepChange(stepInfo);
+      }
+    });
+  }
+
+  /**
+   * Wire up EventBus subscriptions for external callbacks
+   * All manager-to-manager communication now uses EventBus directly
    */
   private _wireUpCallbacks(): void {
-    // Zoom changes - ALWAYS set up internal handlers, even if no external callback
-    if (this._zoomManager) {
-      this._zoomManager.onZoomChange((zoom) => {
-        // External callback
-        this._callbacks.onZoomChange?.(zoom);
+    if (!this._eventBus) return;
 
-        // Redraw grid
-        this._gridManager?.redrawGrid();
+    // Subscribe to ZOOM_CHANGED events
+    this._eventBus.on('ZOOM_CHANGED', ({ zoom }) => {
+      // External callback
+      this._callbacks.onZoomChange?.(zoom);
 
-        // CRITICAL: Validate child shapes are within parent bounds after zoom
-        // This prevents shapes from "escaping" their containers during zoom
-        const constrainedShapes = this._shapeManager?.validateChildShapeBounds() || [];
+      // Redraw grid
+      this._gridManager?.redrawGrid();
 
-        // Update labels for any shapes that were constrained
-        constrainedShapes.forEach(({ shapeId, x, y, width, height }) => {
-          this._labelManager?.updateLabel(shapeId, { x, y, width, height });
-        });
+      // CRITICAL: Validate child shapes are within parent bounds after zoom
+      // This prevents shapes from "escaping" their containers during zoom
+      const constrainedShapes = this._shapeManager?.validateChildShapeBounds() || [];
 
-        // Call zoom end callback - use for reinstantiation
-        this._callbacks.onZoomEnd?.();
+      // Update labels for any shapes that were constrained
+      constrainedShapes.forEach(({ shapeId, x, y, width, height }) => {
+        this._labelManager?.updateLabel(shapeId, { x, y, width, height });
       });
-    }
 
-    // Step changes
-    if (this._callbacks.onStepChange && this._stepOrchestrator) {
-      this._stepOrchestrator.onStepChange((stepInfo) => {
-        this._callbacks.onStepChange?.(stepInfo);
-      });
-    }
+      // Call zoom end callback - use for reinstantiation
+      this._callbacks.onZoomEnd?.();
+    });
 
-    // Persistence data changes
-    if (this._callbacks.onDataChange && this._persistenceManager) {
-      this._persistenceManager.onDataChange(() => {
-        this._callbacks.onDataChange?.();
-      });
-    }
+    // Subscribe to STEP_INFO_CHANGED events
+    this._eventBus.on('STEP_INFO_CHANGED', ({ stepInfo }) => {
+      this._callbacks.onStepChange?.(stepInfo);
+    });
 
-    // Transform changes
-    if (this._callbacks.onTransform && this._transformManager && this._shapeManager && this._labelManager) {
-      this._transformManager.onTransform((shapeId, dimensions) => {
-        this._shapeManager?.updateShapeDimensions(shapeId, dimensions);
-        this._labelManager?.updateLabel(shapeId, dimensions);
-        this._callbacks.onTransform?.(shapeId, dimensions);
-      });
-    }
+    // Subscribe to DATA_CHANGED events
+    this._eventBus.on('DATA_CHANGED', () => {
+      this._callbacks.onDataChange?.();
+    });
+
+    // Subscribe to SHAPE_TRANSFORM_ENDED events
+    this._eventBus.on('SHAPE_TRANSFORM_ENDED', ({ shapeId, dimensions }) => {
+      this._shapeManager?.updateShapeDimensions(shapeId, dimensions);
+      this._labelManager?.updateLabel(shapeId, dimensions);
+      this._callbacks.onTransform?.(shapeId, dimensions);
+    });
   }
 
   // ==================== Type-safe Getters ====================
@@ -433,6 +452,11 @@ export class ManagerRegistry {
     return this._eventManager;
   }
 
+  get eventBus(): EventBus {
+    this._assertInitialized();
+    return this._eventBus!;
+  }
+
   // ==================== Utility Methods ====================
 
   /**
@@ -463,20 +487,25 @@ export class ManagerRegistry {
     this._eventManager = null;
     this._stepOrchestrator = null;
     this._persistenceManager = null;
+    this._selectionManager?.destroy();
     this._selectionManager = null;
     this._labelManager = null;
     this._transformManager = null;
     this._areaManager = null;
+    this._shapeManager?.destroy();
     this._shapeManager = null;
     this._layerManager?.clear();
     this._layerManager = null;
     this._zoomManager = null;
+    this._gridManager?.destroy();
     this._gridManager = null;
 
-    // Clear central state and services
+    // Clear central state, services, and event bus
     this._store?.clear();
     this._store = null;
     this._boundsService = null;
+    this._eventBus?.clear();
+    this._eventBus = null;
 
     this._stage = null;
     this._gridLayer = null;

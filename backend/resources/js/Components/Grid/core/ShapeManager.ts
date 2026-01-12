@@ -4,6 +4,7 @@ import { SHAPE_COLORS, GRID_CONSTANTS } from '@/Components/Grid/types/constants'
 import type { LayerManager } from '@/Components/Grid/core/LayerManager';
 import type { GridStateStore, AreaType } from '@/Components/Grid/core/state/GridStateStore';
 import type { BoundsService } from '@/Components/Grid/core/services/BoundsService';
+import type { EventBus, Unsubscribe } from '@/Components/Grid/core/events';
 
 /**
  * ShapeManager
@@ -17,6 +18,10 @@ import type { BoundsService } from '@/Components/Grid/core/services/BoundsServic
  *
  * Key change: dragBoundFunc now queries BoundsService for LIVE parent bounds,
  * eliminating the stale closure problem.
+ *
+ * Event-driven architecture (Phase 2):
+ * - Store emits SHAPE_CREATED, SHAPE_UPDATED, SHAPE_DELETED events
+ * - ShapeManager can subscribe to ZOOM_CHANGED to validate child bounds
  */
 export class ShapeManager {
     private stage: Konva.Stage;
@@ -27,6 +32,10 @@ export class ShapeManager {
     // Central state store and bounds service
     private store: GridStateStore | null = null;
     private boundsService: BoundsService | null = null;
+
+    // EventBus for event-driven updates
+    private eventBus: EventBus | null = null;
+    private eventUnsubscribers: Unsubscribe[] = [];
 
     // Fallback values (used if store not available during initialization)
     private _fallbackGridSize: number;
@@ -80,6 +89,42 @@ export class ShapeManager {
      */
     setSelectionManager(selectionManager: { getSelectedShapeId: () => string | null; deselect: () => void }): void {
         this.selectionManager = selectionManager;
+    }
+
+    /**
+     * Set the EventBus and subscribe to relevant events
+     * Note: Currently ZOOM_CHANGED validation is handled by ManagerRegistry for backwards compat
+     * This provides a hook for future direct event-driven updates
+     */
+    setEventBus(eventBus: EventBus): void {
+        // Clear any existing subscriptions
+        this.clearEventSubscriptions();
+
+        this.eventBus = eventBus;
+
+        // Future: Subscribe to events that affect shapes
+        // Currently zoom validation is handled by ManagerRegistry callback
+        // These subscriptions would enable direct event-driven validation:
+        // this.eventUnsubscribers.push(
+        //     eventBus.on('ZOOM_CHANGED', () => this.validateChildShapeBounds()),
+        // );
+    }
+
+    /**
+     * Clear event subscriptions (used during cleanup or when switching EventBus)
+     */
+    private clearEventSubscriptions(): void {
+        this.eventUnsubscribers.forEach(unsub => unsub());
+        this.eventUnsubscribers = [];
+    }
+
+    /**
+     * Cleanup resources
+     */
+    destroy(): void {
+        this.clearEventSubscriptions();
+        this.eventBus = null;
+        this.clear();
     }
 
     /**
