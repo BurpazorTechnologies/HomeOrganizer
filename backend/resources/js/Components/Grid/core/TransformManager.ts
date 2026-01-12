@@ -121,7 +121,7 @@ export class TransformManager {
             const shape = nodes[0];
             const shapeId = shape.id();
 
-            // Get final dimensions
+            // Get final dimensions (accounting for Konva's scale transform)
             const x = shape.x();
             const y = shape.y();
             const width = shape.width() * shape.scaleX();
@@ -133,16 +133,31 @@ export class TransformManager {
             shape.width(width);
             shape.height(height);
 
-            // Snap to grid if enabled
-            const snappedX = this.snapEnabled ? Math.round(x / this.gridSize) * this.gridSize : x;
-            const snappedY = this.snapEnabled ? Math.round(y / this.gridSize) * this.gridSize : y;
-            const snappedWidth = this.snapEnabled ? Math.round(width / this.gridSize) * this.gridSize : width;
-            const snappedHeight = this.snapEnabled ? Math.round(height / this.gridSize) * this.gridSize : height;
+            // Use BoundsService for consistent snapping (DRY principle)
+            // This centralizes snapping logic and ensures consistent behavior
+            // between drag/resize preview (boundBoxFunc) and final position
+            let finalBounds = { x, y, width, height };
+            if (this.boundsService) {
+                finalBounds = this.boundsService.constrainResize(
+                    shapeId,
+                    { x, y, width, height },
+                    { width: GRID_CONSTANTS.MIN_SHAPE_SIZE, height: GRID_CONSTANTS.MIN_SHAPE_SIZE }
+                );
+            } else if (this.snapEnabled) {
+                // Fallback: manual snapping if BoundsService not available
+                finalBounds = {
+                    x: Math.round(x / this.gridSize) * this.gridSize,
+                    y: Math.round(y / this.gridSize) * this.gridSize,
+                    width: Math.round(width / this.gridSize) * this.gridSize,
+                    height: Math.round(height / this.gridSize) * this.gridSize,
+                };
+            }
 
-            shape.x(snappedX);
-            shape.y(snappedY);
-            shape.width(snappedWidth);
-            shape.height(snappedHeight);
+            // Apply final bounds to shape
+            shape.x(finalBounds.x);
+            shape.y(finalBounds.y);
+            shape.width(finalBounds.width);
+            shape.height(finalBounds.height);
 
             // Emit transform ended event via EventBus
             if (this.eventBus) {
@@ -150,12 +165,7 @@ export class TransformManager {
                     type: 'SHAPE_TRANSFORM_ENDED',
                     payload: {
                         shapeId,
-                        dimensions: {
-                            x: snappedX,
-                            y: snappedY,
-                            width: snappedWidth,
-                            height: snappedHeight,
-                        },
+                        dimensions: finalBounds,
                     },
                 });
             }

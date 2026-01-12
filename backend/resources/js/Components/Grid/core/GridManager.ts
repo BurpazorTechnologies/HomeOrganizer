@@ -142,7 +142,11 @@ export class GridManager {
    * Calculate the visible bounds in world coordinates
    *
    * Determines which part of the infinite grid is currently visible
-   * based on stage position and scale
+   * based on stage position and scale.
+   *
+   * Grid lines are quantized to gridSize multiples from origin (0,0).
+   * This ensures grid lines always align with snap points regardless of zoom/pan,
+   * preventing visual misalignment between the drawn grid and where shapes snap to.
    *
    * @returns Visible bounds with start/end X and Y coordinates
    */
@@ -152,11 +156,21 @@ export class GridManager {
     const stagePos = this.stage.position();
     const stageScale = this.stage.scaleX();
 
-    // Calculate visible area in world coordinates
-    const startX = Math.floor((-stagePos.x / stageScale) / this.gridSize) * this.gridSize;
-    const endX = Math.ceil((stageWidth - stagePos.x) / stageScale / this.gridSize) * this.gridSize;
-    const startY = Math.floor((-stagePos.y / stageScale) / this.gridSize) * this.gridSize;
-    const endY = Math.ceil((stageHeight - stagePos.y) / stageScale / this.gridSize) * this.gridSize;
+    // Step 1: Calculate world coordinates of viewport edges
+    // These are the exact positions in world space where the viewport boundaries are
+    const worldLeft = -stagePos.x / stageScale;
+    const worldRight = (stageWidth - stagePos.x) / stageScale;
+    const worldTop = -stagePos.y / stageScale;
+    const worldBottom = (stageHeight - stagePos.y) / stageScale;
+
+    // Step 2: Quantize to gridSize multiples from origin (0,0)
+    // This ensures grid lines align with snap points regardless of zoom/pan
+    // The snapping algorithm uses: Math.round(x / gridSize) * gridSize
+    // So grid lines must be drawn at exact gridSize multiples from origin
+    const startX = Math.floor(worldLeft / this.gridSize) * this.gridSize;
+    const endX = Math.ceil(worldRight / this.gridSize) * this.gridSize;
+    const startY = Math.floor(worldTop / this.gridSize) * this.gridSize;
+    const endY = Math.ceil(worldBottom / this.gridSize) * this.gridSize;
 
     return { startX, endX, startY, endY };
   }

@@ -270,15 +270,27 @@ export function createBoundsService(
   // ==================== Private Helpers ====================
 
   /**
-   * Get effective canvas bounds accounting for zoom
+   * Get effective canvas bounds for root shapes (shapes without a parent)
+   *
+   * IMPORTANT: Root shapes should NOT be constrained by zoom.
+   * Zoom is a viewport/rendering concern, not a world-space constraint.
+   *
+   * Root shapes can exist anywhere in world space. The canvas bounds
+   * represent the minimum visible area, but shapes can be positioned
+   * outside this area and scrolled/panned to.
+   *
+   * Previous bug: Dividing by zoom would shrink the constraint area
+   * when zooming in, causing shapes to have "limited boundary".
    */
   function getEffectiveCanvasBounds(): Bounds {
-    const zoom = config.getZoomScale();
+    // Return raw canvas bounds - no zoom adjustment
+    // Root shapes are constrained to the stage dimensions in world space
+    // Zoom only affects what portion of world space is visible, not where shapes can exist
     return {
       x: 0,
       y: 0,
-      width: canvasBounds.width / zoom,
-      height: canvasBounds.height / zoom,
+      width: canvasBounds.width,
+      height: canvasBounds.height,
     };
   }
 

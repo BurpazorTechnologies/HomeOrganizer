@@ -303,7 +303,7 @@ export class ManagerRegistry {
       this._stepOrchestrator?.handleClickFromEvent(worldPosition, target, shapeId);
     });
 
-    // Handle shape drag ended events - update labels
+    // Handle shape drag ended events - update labels and redraw grid
     this._eventBus.on('SHAPE_DRAG_ENDED', ({ shapeId }) => {
       const shape = this._shapeManager?.getShape(shapeId);
       if (shape) {
@@ -314,6 +314,11 @@ export class ManagerRegistry {
           height: shape.height,
         });
       }
+
+      // Redraw grid to ensure it covers the new shape position
+      // This fixes cases where grid doesn't show on some parts after moving a shape
+      this._gridManager?.redrawGrid();
+
       // Emit step change to update UI
       if (this._callbacks.onStepChange && this._stepOrchestrator) {
         const stepInfo = this._stepOrchestrator.getCurrentStepInfo();
@@ -364,6 +369,10 @@ export class ManagerRegistry {
     this._eventBus.on('SHAPE_TRANSFORM_ENDED', ({ shapeId, dimensions }) => {
       this._shapeManager?.updateShapeDimensions(shapeId, dimensions);
       this._labelManager?.updateLabel(shapeId, dimensions);
+
+      // Redraw grid to ensure it covers the new shape bounds
+      this._gridManager?.redrawGrid();
+
       this._callbacks.onTransform?.(shapeId, dimensions);
     });
   }
