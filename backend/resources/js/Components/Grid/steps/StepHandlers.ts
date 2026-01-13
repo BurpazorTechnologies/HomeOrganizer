@@ -81,12 +81,19 @@ export class StepHandlers {
       // Check if clicked on parent shape while in creation mode
       // This happens when user clicks "Create Area" then clicks on the parent area
       if (config.parentContext && context.shapeId === state.parentShapeId && state.isCreationMode) {
+        console.log('[handleClick] Clicked on parent shape in creation mode:', {
+          clickPosition: context.position,
+          parentShapeId: state.parentShapeId,
+          existingChildShapeIds: state.shapeIds,
+        });
+
         // Validate click is within parent bounds using BoundsService or fallback
         const boundsService = managers.boundsService;
         let isValid = false;
         if (boundsService && state.parentShapeId) {
           const parentBounds = boundsService.getShapeBounds(state.parentShapeId);
           isValid = parentBounds ? isPositionWithinBounds(context.position, parentBounds) : false;
+          console.log('[handleClick] Position validation:', { parentBounds, isValid });
         } else {
           isValid = isPositionWithinBounds(context.position, config.parentContext.parentBounds);
         }
@@ -196,13 +203,23 @@ export class StepHandlers {
           '', // No shape to exclude (we're creating new)
           parentShapeIdForCheck
         );
+        console.log('[createShape] Overlap check via BoundsService:', {
+          newShapeBounds,
+          parentShapeIdForCheck,
+          hasOverlap,
+        });
       } else {
         // Fallback to local overlap check
         hasOverlap = this.wouldOverlap(newShapeBounds, state.shapeIds, managers);
+        console.log('[createShape] Overlap check via local:', {
+          newShapeBounds,
+          existingShapeIds: state.shapeIds,
+          hasOverlap,
+        });
       }
 
       if (hasOverlap) {
-        console.warn('Cannot create shape - would overlap with existing shape');
+        console.warn('Cannot create shape - would overlap with existing shape', { newShapeBounds, parentShapeIdForCheck });
         return;
       }
     }

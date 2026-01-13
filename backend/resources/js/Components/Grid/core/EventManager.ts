@@ -123,8 +123,25 @@ export class EventManager {
 
   private bindClickEvents(): void {
     this.stage.on('click', (e) => {
-      const pointer = this.stage.getPointerPosition();
-      if (!pointer) return;
+      // Try to get pointer position from stage, fallback to event if needed
+      let pointer = this.stage.getPointerPosition();
+
+      // Fallback: use event's pointer position if stage doesn't have it
+      // This can happen after shape reinstantiation
+      if (!pointer && e.evt) {
+        const container = this.stage.container();
+        const rect = container.getBoundingClientRect();
+        pointer = {
+          x: e.evt.clientX - rect.left,
+          y: e.evt.clientY - rect.top,
+        };
+        console.log('[EventManager] Using fallback pointer position from event:', pointer);
+      }
+
+      if (!pointer) {
+        console.warn('[EventManager] No pointer position available for click event');
+        return;
+      }
 
       // Calculate world position (accounting for pan and zoom)
       const stagePos = this.stage.position();
@@ -133,6 +150,14 @@ export class EventManager {
         x: (pointer.x - stagePos.x) / scale,
         y: (pointer.y - stagePos.y) / scale,
       };
+
+      console.log('[EventManager] Click processed:', {
+        pointer,
+        stagePos,
+        scale,
+        worldPosition,
+        target: e.target === this.stage ? 'canvas' : 'shape',
+      });
 
       // Emit event instead of callback
       this.eventBus.emit({

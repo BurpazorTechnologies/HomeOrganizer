@@ -262,6 +262,7 @@ export function createBoundsService(
       parentShapeId: string | null
     ): boolean {
       // Get all sibling shapes (shapes with same parent)
+      const siblings: Array<{ id: string; parentShapeId: string | null; bounds: Bounds }> = [];
       for (const [id, shape] of store.state.shapes) {
         if (id === excludeShapeId) continue;
         if (shape.parentShapeId !== parentShapeId) continue;
@@ -273,10 +274,23 @@ export function createBoundsService(
           height: shape.height,
         };
 
+        siblings.push({ id, parentShapeId: shape.parentShapeId, bounds: shapeBounds });
+
         if (boundsOverlap(bounds, shapeBounds)) {
+          console.log('[wouldOverlapSiblings] Overlap detected with:', {
+            checkBounds: bounds,
+            siblingId: id,
+            siblingBounds: shapeBounds,
+            siblingParentId: shape.parentShapeId,
+          });
           return true;
         }
       }
+      console.log('[wouldOverlapSiblings] No overlap. Checked siblings:', {
+        checkBounds: bounds,
+        parentShapeId,
+        siblings,
+      });
       return false;
     },
 
