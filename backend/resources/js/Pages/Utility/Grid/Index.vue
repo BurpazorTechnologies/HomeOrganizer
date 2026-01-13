@@ -39,6 +39,9 @@ const layers = ref<any[]>([]);
 // Saved data state
 const savedData = ref<any>(null);
 
+// Base font size state (for shape labels)
+const baseFontSize = ref<number>(24);
+
 // Handle canvas click
 const handleCanvasClick = (position: { x: number; y: number }) => {
     lastClickPosition.value = position;
@@ -112,6 +115,12 @@ const handleRecenter = () => {
     canvasRef.value?.recenterToLayer();
 };
 
+// Handle base font size changes from toolbar
+const handleBaseFontSizeChange = (size: number) => {
+    baseFontSize.value = size;
+    canvasRef.value?.setBaseFontSize(size);
+};
+
 </script>
 
 <template>
@@ -129,6 +138,7 @@ const handleRecenter = () => {
             :pending-area-name="pendingAreaName"
             :selected-shape-id="selectedShapeId"
             :selected-shape-name="selectedShapeName"
+            :base-font-size="baseFontSize"
             @zoom-in="handleZoomIn"
             @zoom-out="handleZoomOut"
             @reset-zoom="handleResetZoom"
@@ -136,6 +146,7 @@ const handleRecenter = () => {
             @recenter="handleRecenter"
             @save-area-name="handleSaveAreaName"
             @save-shape-label="handleSaveShapeLabel"
+            @update:base-font-size="handleBaseFontSizeChange"
         />
 
 

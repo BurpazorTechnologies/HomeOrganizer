@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import type { LayerManager } from '@/Components/Grid/core/LayerManager';
+import type { GridStateStore } from '@/Components/Grid/core/state/GridStateStore';
 import { GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 
 /**
@@ -12,9 +13,11 @@ import { GRID_CONSTANTS } from '@/Components/Grid/types/constants';
  * ensuring proper opacity handling when layers become inactive.
  *
  * Font sizes are responsive to shape height with min/max constraints for readability.
+ * The base font size is configurable via the store's baseFontSize setting.
  */
 export class LabelManager {
     private layerManager: LayerManager;
+    private store: GridStateStore | null = null;
     private labels: Map<string, Konva.Text> = new Map();
     private labelTypes: Map<string, 'dimension' | 'areaName'> = new Map();
     private labelLayerIds: Map<string, string> = new Map(); // shapeId -> layerId
@@ -24,17 +27,30 @@ export class LabelManager {
     }
 
     /**
-     * Calculate responsive font size based on shape height
+     * Set the store reference for accessing baseFontSize
+     */
+    setStore(store: GridStateStore): void {
+        this.store = store;
+    }
+
+    /**
+     * Calculate responsive font size based on shape height and user-configured base size
      * Returns a font size that scales with shape height but stays within readable bounds
+     *
+     * The baseFontSize from store acts as the starting point / maximum size.
+     * Font size scales down for smaller shapes but respects LABEL_MIN_FONT_SIZE.
      */
     private calculateResponsiveFontSize(shapeHeight: number): number {
-        const { LABEL_MIN_FONT_SIZE, LABEL_MAX_FONT_SIZE, LABEL_HEIGHT_RATIO } = GRID_CONSTANTS;
+        const { LABEL_MIN_FONT_SIZE, LABEL_HEIGHT_RATIO } = GRID_CONSTANTS;
+
+        // Get user-configured base font size (acts as the maximum)
+        const baseFontSize = this.store?.getGridConfig()?.baseFontSize ?? GRID_CONSTANTS.LABEL_MAX_FONT_SIZE;
 
         // Calculate font size as percentage of shape height
         const calculatedSize = Math.round(shapeHeight * LABEL_HEIGHT_RATIO);
 
-        // Clamp between min and max for readability
-        return Math.max(LABEL_MIN_FONT_SIZE, Math.min(LABEL_MAX_FONT_SIZE, calculatedSize));
+        // Clamp between min and baseFontSize (user-configured max)
+        return Math.max(LABEL_MIN_FONT_SIZE, Math.min(baseFontSize, calculatedSize));
     }
 
     /**
@@ -270,5 +286,43 @@ export class LabelManager {
      */
     getLabelLayerId(shapeId: string): string | null {
         return this.labelLayerIds.get(shapeId) || null;
+    }
+
+    /**
+     * Refresh all area name labels with the current baseFontSize
+     * Called when user changes the base font size setting
+     */
+    refreshAllLabels(): void {
+        if (!this.store) return;
+
+        const shapes = this.store.state.shapes;
+        const layersToRedraw = new Set<Konva.Layer>();
+
+        for (const [shapeId, label] of this.labels) {
+            // Only update area name labels (not dimension labels)
+            if (this.labelTypes.get(shapeId) !== 'areaName') continue;
+
+            const shape = shapes.get(shapeId);
+            if (!shape) continue;
+
+            // Recalculate font size with new baseFontSize
+            const fontSize = this.calculateResponsiveFontSize(shape.height);
+            label.fontSize(fontSize);
+
+            // Recalculate position after font size change
+            const labelWidth = label.width();
+            const labelHeight = label.height();
+            const labelX = shape.x + shape.width / 2 - labelWidth / 2;
+            const labelY = shape.y + shape.height / 2 - labelHeight / 2;
+            label.position({ x: labelX, y: labelY });
+
+            const layer = label.getLayer();
+            if (layer) layersToRedraw.add(layer);
+        }
+
+        // Batch redraw all affected layers
+        for (const layer of layersToRedraw) {
+            layer.batchDraw();
+        }
     }
 }

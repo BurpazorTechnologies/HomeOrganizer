@@ -21,6 +21,9 @@ export interface GridConfigState {
 
   /** Whether grid lines are visible */
   gridVisible: boolean;
+
+  /** Base font size for shape labels (user-configurable starting point) */
+  baseFontSize: number;
 }
 
 /**
@@ -30,4 +33,5 @@ export const DEFAULT_GRID_CONFIG_STATE: GridConfigState = {
   gridSize: 20,
   snapEnabled: true,
   gridVisible: true,
+  baseFontSize: 24,
 };

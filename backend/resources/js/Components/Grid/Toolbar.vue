@@ -18,6 +18,7 @@ interface Props {
   pendingAreaName?: { areaId: string; shapeId: string } | null;
   selectedShapeId?: string | null;
   selectedShapeName?: string | null;
+  baseFontSize?: number;
 }
 
 interface Emits {
@@ -28,6 +29,7 @@ interface Emits {
   (e: 'recenter'): void;
   (e: 'save-area-name', payload: { areaId: string; name: string }): void;
   (e: 'save-shape-label', payload: { shapeId: string; label: string }): void;
+  (e: 'update:baseFontSize', value: number): void;
 }
 
 const props = defineProps<Props>();
@@ -41,6 +43,26 @@ const areaNameInput = ref('');
 
 // Shape label input state
 const shapeLabelInput = ref('');
+
+// Font size state
+const localFontSize = ref(props.baseFontSize ?? 24);
+
+// Watch for external baseFontSize changes
+watch(() => props.baseFontSize, (newSize) => {
+  if (newSize !== undefined) {
+    localFontSize.value = newSize;
+  }
+});
+
+/**
+ * Handle font size slider change
+ */
+const handleFontSizeChange = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const newSize = parseInt(target.value, 10);
+  localFontSize.value = newSize;
+  emit('update:baseFontSize', newSize);
+};
 
 /**
  * Toggle collapse state
@@ -256,6 +278,22 @@ const saveShapeLabel = () => {
           >
             Save
           </button>
+        </div>
+        <!-- Font Size Slider -->
+        <div class="mt-2">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[9px] text-gray-500">Text Size</span>
+            <span class="text-[9px] font-mono text-gray-700">{{ localFontSize }}px</span>
+          </div>
+          <input
+            type="range"
+            :value="localFontSize"
+            min="12"
+            max="72"
+            step="2"
+            class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            @input="handleFontSizeChange"
+          />
         </div>
       </div>
 

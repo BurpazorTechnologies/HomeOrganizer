@@ -263,6 +263,11 @@ function getRegistry(): ManagerRegistry | null {
     return registry;
 }
 
+function setBaseFontSize(size: number): void {
+    if (!registry?.isInitialized) return;
+    registry.store.setBaseFontSize(size);
+}
+
 // Expose methods to parent component
 defineExpose({
     zoomIn,
@@ -273,6 +278,7 @@ defineExpose({
     recenterToLayer,
     saveAreaName,
     saveShapeLabel,
+    setBaseFontSize,
     getRegistry,
 });
 

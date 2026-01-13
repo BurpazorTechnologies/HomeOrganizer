@@ -126,6 +126,7 @@ export interface GridStateStore {
   setGridSize(size: number): void;
   setSnapEnabled(enabled: boolean): void;
   setGridVisible(visible: boolean): void;
+  setBaseFontSize(size: number): void;
   setGridConfig(config: Partial<GridConfigState>): void;
   getGridConfig(): GridConfigState;
 
@@ -655,6 +656,14 @@ export function createGridStateStore(options: GridStateStoreOptions = {}): GridS
       emit({ type: 'GRID_VISIBLE_CHANGED', payload: { gridVisible: visible, previousGridVisible: prev } });
     },
 
+    setBaseFontSize(size: number): void {
+      const prev = state.gridConfig.baseFontSize;
+      state.gridConfig.baseFontSize = size;
+      tracker.record('GRID_CONFIG/SET_BASE_FONT_SIZE', ['gridConfig', 'baseFontSize'], prev, size);
+      notify();
+      emit({ type: 'BASE_FONT_SIZE_CHANGED', payload: { baseFontSize: size, previousBaseFontSize: prev } });
+    },
+
     setGridConfig(config: Partial<GridConfigState>): void {
       const prev = { ...state.gridConfig };
       if (config.gridSize !== undefined) {
@@ -665,6 +674,9 @@ export function createGridStateStore(options: GridStateStoreOptions = {}): GridS
       }
       if (config.gridVisible !== undefined) {
         state.gridConfig.gridVisible = config.gridVisible;
+      }
+      if (config.baseFontSize !== undefined) {
+        state.gridConfig.baseFontSize = config.baseFontSize;
       }
       tracker.record('GRID_CONFIG/SET', ['gridConfig'], prev, { ...state.gridConfig });
       notify();

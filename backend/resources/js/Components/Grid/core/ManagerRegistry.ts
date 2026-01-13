@@ -210,8 +210,9 @@ export class ManagerRegistry {
     });
     this._transformManager.setEventBus(this._eventBus);
 
-    // 8. Label Manager - depends on layer manager
+    // 8. Label Manager - depends on layer manager and store (for baseFontSize)
     this._labelManager = new LabelManager(this._layerManager);
+    this._labelManager.setStore(this._store);
 
     // 9. Selection Manager - depends on shape manager, transform manager, store, eventBus
     this._selectionManager = new SelectionManager();
@@ -442,6 +443,12 @@ export class ManagerRegistry {
       this._gridManager?.redrawGrid();
 
       this._callbacks.onTransform?.(shapeId, dimensions);
+    });
+
+    // Subscribe to BASE_FONT_SIZE_CHANGED events
+    this._eventBus.on('BASE_FONT_SIZE_CHANGED', () => {
+      // Refresh all labels with the new base font size
+      this._labelManager?.refreshAllLabels();
     });
   }
 

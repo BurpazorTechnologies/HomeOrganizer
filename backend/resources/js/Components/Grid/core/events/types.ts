@@ -265,6 +265,14 @@ export interface GridConfigChangedEvent {
   };
 }
 
+export interface BaseFontSizeChangedEvent {
+  type: 'BASE_FONT_SIZE_CHANGED';
+  payload: {
+    baseFontSize: number;
+    previousBaseFontSize: number;
+  };
+}
+
 // ==================== Action Lock Events ====================
 
 export interface ActionLockAcquiredEvent {
@@ -566,6 +574,7 @@ export type GridEvent =
   | SnapEnabledChangedEvent
   | GridVisibleChangedEvent
   | GridConfigChangedEvent
+  | BaseFontSizeChangedEvent
   // Action lock events
   | ActionLockAcquiredEvent
   | ActionLockReleasedEvent
