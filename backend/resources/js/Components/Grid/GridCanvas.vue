@@ -43,6 +43,9 @@ const emit = defineEmits<Emits>();
 
 const containerRef = ref<HTMLDivElement | null>(null);
 
+// Loading overlay state - shown during shape reinstantiation after pan/zoom
+const isReinstantiating = ref(false);
+
 // Centralized manager registry - initialized once, provides type-safe access
 let registry: ManagerRegistry | null = null;
 
@@ -122,6 +125,7 @@ function initializeCanvas(): void {
         getIsPanMode: () => props.isPanMode || false,
         setIsPanMode: (value: boolean) => emit('update:isPanMode', value),
         refreshDebugState: () => refreshDebugState(),
+        setIsReinstantiating: (value: boolean) => { isReinstantiating.value = value; },
     });
 
     // Restore state from persistence
@@ -322,7 +326,20 @@ function handleDebugClearMutations(): void {
 </script>
 
 <template>
-    <div ref="containerRef" class="w-full h-full bg-white">
+    <div ref="containerRef" class="w-full h-full bg-white relative">
+        <!-- Loading overlay during shape reinstantiation -->
+        <div
+            v-if="isReinstantiating"
+            class="absolute inset-0 bg-black/30 flex items-center justify-center z-50 pointer-events-none"
+        >
+            <div class="bg-white rounded-lg px-4 py-2 shadow-lg flex items-center gap-2">
+                <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-gray-700 text-sm font-medium">Updating...</span>
+            </div>
+        </div>
     </div>
 
     <!-- Debug Toolbar (dev mode only) -->

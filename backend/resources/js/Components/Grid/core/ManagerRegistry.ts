@@ -49,6 +49,8 @@ export interface EventManagerExternalCallbacks {
   getIsPanMode: () => boolean;
   setIsPanMode: (value: boolean) => void;
   refreshDebugState: () => void;
+  // Loading overlay control for shape reinstantiation
+  setIsReinstantiating?: (value: boolean) => void;
 }
 
 export class ManagerRegistry {
@@ -284,12 +286,20 @@ export class ManagerRegistry {
       this._shapeManager?.setShapesDraggable(false);
     });
 
-    // Handle pan orchestration requests
+    // Handle pan orchestration requests - with loading overlay
     this._eventBus.on('PAN_ORCHESTRATION_REQUESTED', async ({ type, panPosition, stayInPanMode }) => {
-      if (type === 'pan_end') {
-        await this._stepOrchestrator?.handlePanEnd(panPosition, stayInPanMode ?? false);
-      } else if (type === 'pan_mode_exit') {
-        await this._stepOrchestrator?.handlePanModeExit(panPosition);
+      // Show loading overlay during reinstantiation
+      this._eventManagerExternalCallbacks?.setIsReinstantiating?.(true);
+
+      try {
+        if (type === 'pan_end') {
+          await this._stepOrchestrator?.handlePanEnd(panPosition, stayInPanMode ?? false);
+        } else if (type === 'pan_mode_exit') {
+          await this._stepOrchestrator?.handlePanModeExit(panPosition);
+        }
+      } finally {
+        // Hide loading overlay
+        this._eventManagerExternalCallbacks?.setIsReinstantiating?.(false);
       }
     });
 
@@ -335,54 +345,76 @@ export class ManagerRegistry {
     if (!this._eventBus) return;
 
     // Subscribe to ZOOM_CHANGED events
-    this._eventBus.on('ZOOM_CHANGED', ({ zoom }) => {
+    this._eventBus.on('ZOOM_CHANGED', async ({ zoom }) => {
       // External callback
       this._callbacks.onZoomChange?.(zoom);
 
-      // CRITICAL: Re-snap pan position to new screenGridSize after zoom change
-      // When zoom changes, the screenGridSize changes (gridSize * zoom)
-      // Pan must be re-snapped to maintain grid alignment
-      if (this._store && this._stage) {
-        const gridSize = this._store.getGridConfig().gridSize;
-        const screenGridSize = gridSize * zoom;
-        const currentPan = this._stage.position();
-        const snappedPan = {
-          x: Math.round(currentPan.x / screenGridSize) * screenGridSize,
-          y: Math.round(currentPan.y / screenGridSize) * screenGridSize,
-        };
+      // Show loading overlay during reinstantiation
+      this._eventManagerExternalCallbacks?.setIsReinstantiating?.(true);
 
-        // DEBUG: Log zoom snap values
-        console.log('[ZOOM SNAP] Pan re-snap on zoom change:', {
-          zoom,
-          gridSize,
-          screenGridSize,
-          currentPan,
-          snappedPan,
-          changed: snappedPan.x !== currentPan.x || snappedPan.y !== currentPan.y,
+      try {
+        // CRITICAL: Re-snap pan position to new screenGridSize after zoom change
+        // When zoom changes, the screenGridSize changes (gridSize * zoom)
+        // Pan must be re-snapped to maintain grid alignment
+        if (this._store && this._stage) {
+          const gridSize = this._store.getGridConfig().gridSize;
+          const screenGridSize = gridSize * zoom;
+          const currentPan = this._stage.position();
+          const snappedPan = {
+            x: Math.round(currentPan.x / screenGridSize) * screenGridSize,
+            y: Math.round(currentPan.y / screenGridSize) * screenGridSize,
+          };
+
+          // DEBUG: Log zoom snap values
+          console.log('[ZOOM SNAP] Pan re-snap on zoom change:', {
+            zoom,
+            gridSize,
+            screenGridSize,
+            currentPan,
+            snappedPan,
+            changed: snappedPan.x !== currentPan.x || snappedPan.y !== currentPan.y,
+          });
+
+          // Only update if position actually changed (avoid unnecessary redraws)
+          if (snappedPan.x !== currentPan.x || snappedPan.y !== currentPan.y) {
+            this._stage.position(snappedPan);
+            this._store.setPan(snappedPan);
+            // Note: setPan emits PAN_CHANGED which triggers grid redraw
+          }
+        }
+
+        // Redraw grid
+        this._gridManager?.redrawGrid();
+
+        // CRITICAL: Reinstantiate shapes after zoom to fix coordinate issues
+        // Get the current pan mode state to determine draggable state
+        const isPanMode = this._eventManagerExternalCallbacks?.getIsPanMode?.() ?? false;
+        await this._shapeManager?.reinstantiateShapes({ forceDraggable: !isPanMode });
+
+        // Reattach transformer to selected shape after reinstantiation
+        const selectedShapeId = this._selectionManager?.getSelectedShapeId?.();
+        if (selectedShapeId) {
+          const newNode = this._shapeManager?.getShapeNode(selectedShapeId);
+          if (newNode) {
+            this._transformManager?.attachTo(newNode);
+          }
+        }
+
+        // CRITICAL: Validate child shapes are within parent bounds after zoom
+        // This prevents shapes from "escaping" their containers during zoom
+        const constrainedShapes = this._shapeManager?.validateChildShapeBounds() || [];
+
+        // Update labels for any shapes that were constrained
+        constrainedShapes.forEach(({ shapeId, x, y, width, height }) => {
+          this._labelManager?.updateLabel(shapeId, { x, y, width, height });
         });
 
-        // Only update if position actually changed (avoid unnecessary redraws)
-        if (snappedPan.x !== currentPan.x || snappedPan.y !== currentPan.y) {
-          this._stage.position(snappedPan);
-          this._store.setPan(snappedPan);
-          // Note: setPan emits PAN_CHANGED which triggers grid redraw
-        }
+        // Call zoom end callback
+        this._callbacks.onZoomEnd?.();
+      } finally {
+        // Hide loading overlay
+        this._eventManagerExternalCallbacks?.setIsReinstantiating?.(false);
       }
-
-      // Redraw grid
-      this._gridManager?.redrawGrid();
-
-      // CRITICAL: Validate child shapes are within parent bounds after zoom
-      // This prevents shapes from "escaping" their containers during zoom
-      const constrainedShapes = this._shapeManager?.validateChildShapeBounds() || [];
-
-      // Update labels for any shapes that were constrained
-      constrainedShapes.forEach(({ shapeId, x, y, width, height }) => {
-        this._labelManager?.updateLabel(shapeId, { x, y, width, height });
-      });
-
-      // Call zoom end callback - use for reinstantiation
-      this._callbacks.onZoomEnd?.();
     });
 
     // Subscribe to PAN_CHANGED events

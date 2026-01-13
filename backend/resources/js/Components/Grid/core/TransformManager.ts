@@ -44,6 +44,8 @@ export class TransformManager {
         this.store = options.store || null;
 
         // Create transformer (Note: uses gridSize/snapEnabled getters below)
+        // NOTE: boundBoxFunc is removed because it has coordinate system issues after pan/zoom.
+        // Constraints are enforced in the transformend handler instead, which uses world coordinates.
         this.transformer = new Konva.Transformer({
             rotateEnabled: TRANSFORMER_CONFIG.ROTATE_ENABLED,
             enabledAnchors: [...TRANSFORMER_CONFIG.ENABLED_ANCHORS],
@@ -53,39 +55,16 @@ export class TransformManager {
             anchorSize: TRANSFORMER_CONFIG.ANCHOR_SIZE,
             keepRatio: false, // Allow free resize
             boundBoxFunc: (oldBox, newBox) => {
-                // Enforce minimum size
+                // Only enforce minimum size during transform
+                // Parent bounds constraints are applied in transformend handler
+                // because boundBoxFunc receives coordinates in screen space which
+                // doesn't align with world coordinates after pan/zoom
                 if (newBox.width < GRID_CONSTANTS.MIN_SHAPE_SIZE) {
                     newBox.width = GRID_CONSTANTS.MIN_SHAPE_SIZE;
                 }
                 if (newBox.height < GRID_CONSTANTS.MIN_SHAPE_SIZE) {
                     newBox.height = GRID_CONSTANTS.MIN_SHAPE_SIZE;
                 }
-
-                // Use BoundsService for live parent bounds (preferred)
-                const shapeId = this.transformer.nodes()[0]?.id();
-                if (shapeId && this.boundsService) {
-                    const constrained = this.boundsService.constrainResize(
-                        shapeId,
-                        { x: newBox.x, y: newBox.y, width: newBox.width, height: newBox.height },
-                        { width: GRID_CONSTANTS.MIN_SHAPE_SIZE, height: GRID_CONSTANTS.MIN_SHAPE_SIZE }
-                    );
-                    return {
-                        ...newBox,
-                        x: constrained.x,
-                        y: constrained.y,
-                        width: constrained.width,
-                        height: constrained.height,
-                    };
-                }
-
-                // Fallback: Just apply grid snapping if no boundsService
-                if (this.snapEnabled) {
-                    newBox.x = Math.round(newBox.x / this.gridSize) * this.gridSize;
-                    newBox.y = Math.round(newBox.y / this.gridSize) * this.gridSize;
-                    newBox.width = Math.round(newBox.width / this.gridSize) * this.gridSize;
-                    newBox.height = Math.round(newBox.height / this.gridSize) * this.gridSize;
-                }
-
                 return newBox;
             },
         });
@@ -114,6 +93,59 @@ export class TransformManager {
      * Setup transform event handlers
      */
     private setupTransformEvents(): void {
+        // Handle transform during resize (real-time constraints)
+        // This fires continuously while user is resizing
+        this.transformer.on('transform', () => {
+            const nodes = this.transformer.nodes();
+            if (nodes.length === 0) return;
+
+            const shape = nodes[0];
+            const shapeId = shape.id();
+
+            // Get current dimensions (accounting for Konva's scale transform)
+            const x = shape.x();
+            const y = shape.y();
+            const width = shape.width() * shape.scaleX();
+            const height = shape.height() * shape.scaleY();
+
+            // Constrain within parent bounds if this is a child shape
+            if (this.boundsService) {
+                const parentBounds = this.boundsService.getParentBounds(shapeId);
+                if (parentBounds) {
+                    // Calculate constrained position
+                    let newX = x;
+                    let newY = y;
+                    let newWidth = width;
+                    let newHeight = height;
+
+                    // Constrain position (top-left corner)
+                    newX = Math.max(parentBounds.x, newX);
+                    newY = Math.max(parentBounds.y, newY);
+
+                    // Constrain size to fit within parent
+                    const maxWidth = parentBounds.x + parentBounds.width - newX;
+                    const maxHeight = parentBounds.y + parentBounds.height - newY;
+                    newWidth = Math.min(newWidth, maxWidth);
+                    newHeight = Math.min(newHeight, maxHeight);
+
+                    // Enforce minimum size
+                    newWidth = Math.max(newWidth, GRID_CONSTANTS.MIN_SHAPE_SIZE);
+                    newHeight = Math.max(newHeight, GRID_CONSTANTS.MIN_SHAPE_SIZE);
+
+                    // Apply constraints if changed
+                    if (newX !== x || newY !== y || newWidth !== width || newHeight !== height) {
+                        // Reset scale and apply constrained dimensions
+                        shape.scaleX(1);
+                        shape.scaleY(1);
+                        shape.x(newX);
+                        shape.y(newY);
+                        shape.width(newWidth);
+                        shape.height(newHeight);
+                    }
+                }
+            }
+        });
+
         this.transformer.on('transformend', () => {
             const nodes = this.transformer.nodes();
             if (nodes.length === 0) return;

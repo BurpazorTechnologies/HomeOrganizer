@@ -24,6 +24,11 @@ export const GRID_CONSTANTS = {
   DEFAULT_SHAPE_HEIGHT: 100,
   SHAPE_STROKE_WIDTH: 2,
 
+  // Label font settings
+  LABEL_MIN_FONT_SIZE: 12,      // minimum readable font size
+  LABEL_MAX_FONT_SIZE: 48,      // maximum font size
+  LABEL_HEIGHT_RATIO: 0.15,     // font size = shape height * ratio (15%)
+
   // Canvas bounds (semi-infinite limits)
   CANVAS_MIN_X: -10000,
   CANVAS_MAX_X: 10000,

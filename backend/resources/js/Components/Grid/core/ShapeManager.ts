@@ -2,7 +2,7 @@ import Konva from 'konva';
 import type { Shape, RectangleShape } from '@/Components/Grid/types/shapes';
 import { SHAPE_COLORS, GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 import type { LayerManager } from '@/Components/Grid/core/LayerManager';
-import type { GridStateStore, AreaType } from '@/Components/Grid/core/state/GridStateStore';
+import type { GridStateStore, AreaType, ShapeState } from '@/Components/Grid/core/state/GridStateStore';
 import type { BoundsService } from '@/Components/Grid/core/services/BoundsService';
 import type { EventBus, Unsubscribe } from '@/Components/Grid/core/events';
 
@@ -162,17 +162,82 @@ export class ShapeManager {
         // Use provided ID (for restoration) or generate new one
         const id = options?.id || `shape_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
+        // Get shape dimensions
+        const shapeWidth = options?.width || GRID_CONSTANTS.DEFAULT_SHAPE_WIDTH;
+        const shapeHeight = options?.height || GRID_CONSTANTS.DEFAULT_SHAPE_HEIGHT;
+
         // Snap position to grid if enabled
-        const snappedX = this.snapEnabled ? Math.round(x / this.gridSize) * this.gridSize : x;
-        const snappedY = this.snapEnabled ? Math.round(y / this.gridSize) * this.gridSize : y;
+        let snappedX = this.snapEnabled ? Math.round(x / this.gridSize) * this.gridSize : x;
+        let snappedY = this.snapEnabled ? Math.round(y / this.gridSize) * this.gridSize : y;
+
+        // CRITICAL: Constrain initial position within parent bounds
+        // This ensures child shapes are always created/loaded within their parent
+        if (options?.parentShapeId && this.store) {
+            const parentShape = this.store.getShape(options.parentShapeId);
+            if (parentShape) {
+                const parentBounds = {
+                    x: parentShape.x,
+                    y: parentShape.y,
+                    width: parentShape.width,
+                    height: parentShape.height,
+                };
+
+                // Calculate constrained position
+                const minX = parentBounds.x;
+                const minY = parentBounds.y;
+                const maxX = parentBounds.x + parentBounds.width - shapeWidth;
+                const maxY = parentBounds.y + parentBounds.height - shapeHeight;
+
+                const constrainedX = Math.max(minX, Math.min(snappedX, maxX));
+                const constrainedY = Math.max(minY, Math.min(snappedY, maxY));
+
+                // Re-snap after constraining if position changed
+                if (constrainedX !== snappedX || constrainedY !== snappedY) {
+                    console.log('[ShapeManager] Constrained initial position within parent bounds:', {
+                        shapeId: id,
+                        original: { x: snappedX, y: snappedY },
+                        constrained: { x: constrainedX, y: constrainedY },
+                        parentBounds,
+                    });
+                    snappedX = this.snapEnabled ? Math.round(constrainedX / this.gridSize) * this.gridSize : constrainedX;
+                    snappedY = this.snapEnabled ? Math.round(constrainedY / this.gridSize) * this.gridSize : constrainedY;
+                    // Re-constrain after snapping (snap might push outside bounds)
+                    snappedX = Math.max(minX, Math.min(snappedX, maxX));
+                    snappedY = Math.max(minY, Math.min(snappedY, maxY));
+                }
+            }
+        } else if (options?.parentBounds) {
+            // Fallback: Use static parentBounds if parentShapeId not available (deprecated path)
+            const parentBounds = options.parentBounds;
+            const minX = parentBounds.x;
+            const minY = parentBounds.y;
+            const maxX = parentBounds.x + parentBounds.width - shapeWidth;
+            const maxY = parentBounds.y + parentBounds.height - shapeHeight;
+
+            const constrainedX = Math.max(minX, Math.min(snappedX, maxX));
+            const constrainedY = Math.max(minY, Math.min(snappedY, maxY));
+
+            if (constrainedX !== snappedX || constrainedY !== snappedY) {
+                console.log('[ShapeManager] Constrained initial position (fallback parentBounds):', {
+                    shapeId: id,
+                    original: { x: snappedX, y: snappedY },
+                    constrained: { x: constrainedX, y: constrainedY },
+                    parentBounds,
+                });
+                snappedX = this.snapEnabled ? Math.round(constrainedX / this.gridSize) * this.gridSize : constrainedX;
+                snappedY = this.snapEnabled ? Math.round(constrainedY / this.gridSize) * this.gridSize : constrainedY;
+                snappedX = Math.max(minX, Math.min(snappedX, maxX));
+                snappedY = Math.max(minY, Math.min(snappedY, maxY));
+            }
+        }
 
         const shapeData: RectangleShape = {
             id,
             type: 'rectangle',
             x: snappedX,
             y: snappedY,
-            width: options?.width || GRID_CONSTANTS.DEFAULT_SHAPE_WIDTH,
-            height: options?.height || GRID_CONSTANTS.DEFAULT_SHAPE_HEIGHT,
+            width: shapeWidth,
+            height: shapeHeight,
             fill: options?.fill || SHAPE_COLORS.HOME_AREA_FILL,
             stroke: options?.stroke || SHAPE_COLORS.HOME_AREA_STROKE,
             strokeWidth: options?.strokeWidth || GRID_CONSTANTS.SHAPE_STROKE_WIDTH,
@@ -214,10 +279,10 @@ export class ShapeManager {
             }
         }
 
-        // Create the dragBoundFunc that uses live bounds queries
-        const dragBoundFunc = this.createDragBoundFunc(id, options?.parentBounds);
-
         // Create Konva rectangle
+        // NOTE: dragBoundFunc is DISABLED - constraints are enforced via dragmove/dragend handlers
+        // This is more reliable as dragBoundFunc has issues with pan/zoom coordinate transforms
+        // The dragmove handler enforces constraints during drag, dragend finalizes position
         const rect = new Konva.Rect({
             id: shapeData.id,
             x: shapeData.x,
@@ -228,35 +293,126 @@ export class ShapeManager {
             stroke: shapeData.stroke,
             strokeWidth: shapeData.strokeWidth,
             draggable: true,
-            dragBoundFunc,
+            // dragBoundFunc - DISABLED: Using dragmove/dragend for constraints instead
         });
 
-        // NOTE: dragBoundFunc should handle all constraints
-        // dragmove is disabled to avoid interference - keeping for reference
-        // rect.on('dragmove', () => { ... });
+        // DEBUG: Add mousedown handler to verify shape is receiving events
+        rect.on('mousedown', () => {
+            console.log('[mousedown] Shape clicked for drag:', {
+                shapeId: id,
+                draggable: rect.draggable(),
+                listening: rect.listening(),
+                position: { x: rect.x(), y: rect.y() },
+            });
+        });
+
+        // Add dragmove handler for bounds enforcement as backup to dragBoundFunc
+        // This handles edge cases where dragBoundFunc might not work correctly
+        rect.on('dragmove', () => {
+            if (!this.boundsService) return;
+
+            const parentBounds = this.boundsService.getParentBounds(id);
+
+            if (parentBounds) {
+                const x = rect.x();
+                const y = rect.y();
+                const shapeWidth = rect.width() * rect.scaleX();
+                const shapeHeight = rect.height() * rect.scaleY();
+
+                // DEBUG: Log every dragmove with stage info
+                const stagePos = this.stage.position();
+                const stageScale = this.stage.scaleX();
+                console.log('[dragmove] Shape position check:', {
+                    shapeId: id,
+                    currentPos: { x, y },
+                    stagePosition: stagePos,
+                    stageScale,
+                    shapeSize: { width: shapeWidth, height: shapeHeight },
+                    parentBounds,
+                    constraints: {
+                        minX: parentBounds.x,
+                        minY: parentBounds.y,
+                        maxX: parentBounds.x + parentBounds.width - shapeWidth,
+                        maxY: parentBounds.y + parentBounds.height - shapeHeight,
+                    },
+                });
+
+                const minX = parentBounds.x;
+                const minY = parentBounds.y;
+                const maxX = parentBounds.x + parentBounds.width - shapeWidth;
+                const maxY = parentBounds.y + parentBounds.height - shapeHeight;
+
+                const isOutside = x < minX || y < minY || x > maxX || y > maxY;
+
+                if (isOutside) {
+                    let constrainedX = Math.max(minX, Math.min(x, maxX));
+                    let constrainedY = Math.max(minY, Math.min(y, maxY));
+
+                    if (this.snapEnabled) {
+                        constrainedX = Math.round(constrainedX / this.gridSize) * this.gridSize;
+                        constrainedY = Math.round(constrainedY / this.gridSize) * this.gridSize;
+                        constrainedX = Math.max(minX, Math.min(constrainedX, maxX));
+                        constrainedY = Math.max(minY, Math.min(constrainedY, maxY));
+                    }
+
+                    rect.x(constrainedX);
+                    rect.y(constrainedY);
+                }
+            }
+        });
 
         // Add drag end handler to update shape data and store
         rect.on('dragend', () => {
             let newX = rect.x();
             let newY = rect.y();
 
-            // CRITICAL: Ensure final position is snapped to grid
-            // dragBoundFunc should handle this during drag, but we snap here as guarantee
+            // CRITICAL: Enforce parent bounds constraint FIRST
+            // This ensures shape stays within parent even if dragBoundFunc was bypassed
+            if (this.boundsService) {
+                const parentBounds = this.boundsService.getParentBounds(id);
+                if (parentBounds) {
+                    const shapeWidth = rect.width() * rect.scaleX();
+                    const shapeHeight = rect.height() * rect.scaleY();
+
+                    const minX = parentBounds.x;
+                    const minY = parentBounds.y;
+                    const maxX = parentBounds.x + parentBounds.width - shapeWidth;
+                    const maxY = parentBounds.y + parentBounds.height - shapeHeight;
+
+                    newX = Math.max(minX, Math.min(newX, maxX));
+                    newY = Math.max(minY, Math.min(newY, maxY));
+                }
+            }
+
+            // Then apply grid snapping
             if (this.snapEnabled) {
                 const snappedX = Math.round(newX / this.gridSize) * this.gridSize;
                 const snappedY = Math.round(newY / this.gridSize) * this.gridSize;
+                newX = snappedX;
+                newY = snappedY;
 
-                // Only update Konva node if snapping changed position
-                if (snappedX !== newX || snappedY !== newY) {
-                    console.log('[ShapeManager] dragend snap correction:', {
-                        before: { x: newX, y: newY },
-                        after: { x: snappedX, y: snappedY },
-                    });
-                    newX = snappedX;
-                    newY = snappedY;
-                    rect.x(newX);
-                    rect.y(newY);
+                // Re-constrain after snapping (snap might push outside bounds)
+                if (this.boundsService) {
+                    const parentBounds = this.boundsService.getParentBounds(id);
+                    if (parentBounds) {
+                        const shapeWidth = rect.width() * rect.scaleX();
+                        const shapeHeight = rect.height() * rect.scaleY();
+
+                        const minX = parentBounds.x;
+                        const minY = parentBounds.y;
+                        const maxX = parentBounds.x + parentBounds.width - shapeWidth;
+                        const maxY = parentBounds.y + parentBounds.height - shapeHeight;
+
+                        newX = Math.max(minX, Math.min(newX, maxX));
+                        newY = Math.max(minY, Math.min(newY, maxY));
+                    }
                 }
+            }
+
+            // Update Konva node position if changed
+            if (newX !== rect.x() || newY !== rect.y()) {
+                rect.x(newX);
+                rect.y(newY);
             }
 
             console.log('[ShapeManager] dragend', {
@@ -291,103 +447,9 @@ export class ShapeManager {
         return shapeData;
     }
 
-    /**
-     * Create a dragBoundFunc that uses live bounds from BoundsService
-     * This is the KEY method that fixes the stale bounds problem
-     *
-     * IMPORTANT: Konva's dragBoundFunc receives the proposed position for the shape's
-     * top-left corner. The position is in the shape's coordinate space (which is the
-     * layer's coordinate space). Parent bounds from the store are also in this same
-     * coordinate space. So they should match - no coordinate transformation needed.
-     *
-     * NOTE: The dragmove handler provides a backup constraint in case dragBoundFunc
-     * doesn't work correctly (which can happen with certain pan/zoom scenarios).
-     */
-    private createDragBoundFunc(
-        shapeId: string,
-        fallbackBounds?: { x: number; y: number; width: number; height: number } | null
-    ): (pos: { x: number; y: number }) => { x: number; y: number } {
-        // IMPORTANT: Use arrow function to preserve 'this' context
-        // This allows us to access this.boundsService at RUNTIME (not capture at creation time)
-        // which is critical for shapes created before boundsService is fully set up
-        return (pos: { x: number; y: number }) => {
-            const shapeEntry = this.shapes.get(shapeId);
-            if (!shapeEntry) return pos;
-
-            const rect = shapeEntry.node as Konva.Rect;
-            const shapeWidth = rect.width() * rect.scaleX();
-            const shapeHeight = rect.height() * rect.scaleY();
-
-            // Use BoundsService for live bounds (preferred) - access at RUNTIME via this
-            if (this.boundsService) {
-                // Get parent bounds directly for debugging
-                const parentBounds = this.boundsService.getParentBounds(shapeId);
-
-                if (parentBounds) {
-                    // Constrain directly using parent bounds
-                    const minX = parentBounds.x;
-                    const minY = parentBounds.y;
-                    const maxX = parentBounds.x + parentBounds.width - shapeWidth;
-                    const maxY = parentBounds.y + parentBounds.height - shapeHeight;
-
-                    let newX = Math.max(minX, Math.min(pos.x, maxX));
-                    let newY = Math.max(minY, Math.min(pos.y, maxY));
-
-                    // Apply grid snapping
-                    if (this.snapEnabled) {
-                        newX = Math.round(newX / this.gridSize) * this.gridSize;
-                        newY = Math.round(newY / this.gridSize) * this.gridSize;
-                        // Re-constrain after snapping
-                        newX = Math.max(minX, Math.min(newX, maxX));
-                        newY = Math.max(minY, Math.min(newY, maxY));
-                    }
-
-                    return { x: newX, y: newY };
-                } else {
-                    // No parent - use BoundsService constrainDrag for canvas bounds
-                    const result = this.boundsService.constrainDrag(
-                        shapeId,
-                        pos,
-                        { width: shapeWidth, height: shapeHeight }
-                    );
-                    return result;
-                }
-            }
-
-            // Fallback to static bounds (deprecated path)
-            let newX = pos.x;
-            let newY = pos.y;
-
-            if (fallbackBounds) {
-                newX = Math.max(fallbackBounds.x, Math.min(newX, fallbackBounds.x + fallbackBounds.width - shapeWidth));
-                newY = Math.max(fallbackBounds.y, Math.min(newY, fallbackBounds.y + fallbackBounds.height - shapeHeight));
-
-                if (this.snapEnabled) {
-                    newX = Math.round(newX / this.gridSize) * this.gridSize;
-                    newY = Math.round(newY / this.gridSize) * this.gridSize;
-                    // Re-constrain after snapping - snap can push outside bounds
-                    newX = Math.max(fallbackBounds.x, Math.min(newX, fallbackBounds.x + fallbackBounds.width - shapeWidth));
-                    newY = Math.max(fallbackBounds.y, Math.min(newY, fallbackBounds.y + fallbackBounds.height - shapeHeight));
-                }
-            } else {
-                const zoomScale = this.getZoomScale();
-                const stageWidth = this.stage.width() / zoomScale;
-                const stageHeight = this.stage.height() / zoomScale;
-                newX = Math.max(0, Math.min(newX, stageWidth - shapeWidth));
-                newY = Math.max(0, Math.min(newY, stageHeight - shapeHeight));
-
-                if (this.snapEnabled) {
-                    newX = Math.round(newX / this.gridSize) * this.gridSize;
-                    newY = Math.round(newY / this.gridSize) * this.gridSize;
-                    // Re-constrain after snapping
-                    newX = Math.max(0, Math.min(newX, stageWidth - shapeWidth));
-                    newY = Math.max(0, Math.min(newY, stageHeight - shapeHeight));
-                }
-            }
-
-            return { x: newX, y: newY };
-        };
-    }
+    // NOTE: dragBoundFunc has been REMOVED because it has coordinate system issues after pan/zoom.
+    // Constraints are now enforced via dragmove/dragend handlers which work reliably
+    // because they use world coordinates from the store (single source of truth).
 
     /**
      * Update shape dimensions (called during resize)
@@ -440,26 +502,6 @@ export class ShapeManager {
      */
     getAllShapes(): Shape[] {
         return Array.from(this.shapes.values()).map(s => s.data);
-    }
-
-    /**
-     * @deprecated Use SelectionManager.select() instead
-     * This method is kept for backward compatibility but does nothing.
-     * Selection state is managed by SelectionManager.
-     */
-    selectShape(_shapeId: string): void {
-        // No-op: Selection is managed by SelectionManager
-        // This method exists for backward compatibility with SelectionManager calling it
-    }
-
-    /**
-     * @deprecated Use SelectionManager.deselect() instead
-     * This method is kept for backward compatibility but does nothing.
-     * Selection state is managed by SelectionManager.
-     */
-    deselectShape(): void {
-        // No-op: Selection is managed by SelectionManager
-        // This method exists for backward compatibility with SelectionManager calling it
     }
 
     /**
@@ -641,24 +683,39 @@ export class ShapeManager {
     }
 
     /**
-     * Reinstantiate all Konva shape nodes with fresh dragBoundFunc closures.
-     * This fixes the stale bounds problem that occurs after pan/zoom operations.
+     * Reinstantiate all Konva shape nodes after pan/zoom operations.
+     * This completely rebuilds all shapes from the store (source of truth),
+     * ensuring correct coordinate handling regardless of pan/zoom state.
      *
      * The method:
      * 1. Saves shape data from store (source of truth)
      * 2. Destroys all existing Konva nodes
-     * 3. Recreates Konva nodes with fresh dragBoundFunc
-     * 4. Sets draggable state based on options or preserves existing state
+     * 3. Recreates Konva nodes with WORLD coordinates from store
+     * 4. Uses dragmove/dragend handlers for constraints (NOT dragBoundFunc)
+     * 5. Sets draggable state based on options or preserves existing state
+     *
+     * IMPORTANT: This does NOT use dragBoundFunc because it has coordinate
+     * system issues after pan/zoom. Instead, dragmove/dragend handlers
+     * enforce constraints using world coordinates from the store.
      *
      * @param options - Optional configuration
      * @param options.forceDraggable - If provided, all shapes will have this draggable state
+     * @param options.onStart - Callback when reinstantiation starts (for loading overlay)
+     * @param options.onComplete - Callback when reinstantiation completes (for hiding overlay)
      * @returns Promise that resolves when reinstantiation is complete
      */
-    async reinstantiateShapes(options?: { forceDraggable?: boolean }): Promise<void> {
+    async reinstantiateShapes(options?: {
+        forceDraggable?: boolean;
+        onStart?: () => void;
+        onComplete?: () => void;
+    }): Promise<void> {
         if (!this.store || !this.layerManager) {
             console.warn('[ShapeManager] Cannot reinstantiate: store or layerManager not available');
             return;
         }
+
+        // Notify start of reinstantiation (for loading overlay)
+        options?.onStart?.();
 
         console.log('[ShapeManager] Starting shape reinstantiation...', options);
 
@@ -673,8 +730,8 @@ export class ShapeManager {
             });
         }
 
-        // Get all shape data from store (source of truth)
-        const storeShapes = Array.from(this.store.state.shapes.values());
+        // Get all shape data from store (source of truth - WORLD coordinates)
+        const storeShapes: ShapeState[] = Array.from(this.store.state.shapes.values()) as ShapeState[];
 
         // Get unique layer IDs for redraw
         const layerIds = new Set(Array.from(this.shapes.values()).map(s => s.layerId));
@@ -685,7 +742,7 @@ export class ShapeManager {
         });
         this.shapes.clear();
 
-        // Step 2: Recreate shapes from store data
+        // Step 2: Recreate shapes from store data (WORLD coordinates)
         // Sort by zIndex to maintain proper ordering (parent shapes first)
         const sortedShapes = storeShapes.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
 
@@ -698,9 +755,6 @@ export class ShapeManager {
                 continue;
             }
 
-            // Create fresh dragBoundFunc with current bounds
-            const dragBoundFunc = this.createDragBoundFunc(shapeData.id, null);
-
             // Determine draggable state:
             // 1. If forceDraggable is provided, use it
             // 2. Otherwise, use preserved state or default to true
@@ -708,27 +762,33 @@ export class ShapeManager {
                 ? options.forceDraggable
                 : (shapeDraggableStates.get(shapeData.id) ?? true);
 
-            // Create new Konva rectangle
+            // Create new Konva rectangle with WORLD coordinates from store
+            // NOTE: NO dragBoundFunc - constraints are handled by dragmove/dragend
             const rect = new Konva.Rect({
                 id: shapeData.id,
-                x: shapeData.x,
-                y: shapeData.y,
+                x: shapeData.x,  // WORLD coordinate
+                y: shapeData.y,  // WORLD coordinate
                 width: shapeData.width,
                 height: shapeData.height,
                 fill: shapeData.fill,
                 stroke: shapeData.stroke,
                 strokeWidth: shapeData.strokeWidth,
                 draggable: draggableState,
-                dragBoundFunc,
+                // NO dragBoundFunc - it has coordinate issues after pan/zoom
             });
 
-            // Re-add dragmove handler for bounds enforcement
+            // Capture shapeId for closure
+            const shapeId = shapeData.id;
+
+            // dragmove handler - constrain position during drag
+            // Uses WORLD coordinates (shape coords match parent bounds from store)
             rect.on('dragmove', () => {
                 if (!this.boundsService) return;
 
-                const parentBounds = this.boundsService.getParentBounds(shapeData.id);
+                const parentBounds = this.boundsService.getParentBounds(shapeId);
 
                 if (parentBounds) {
+                    // All coordinates are in WORLD space
                     const x = rect.x();
                     const y = rect.y();
                     const shapeWidth = rect.width() * rect.scaleX();
@@ -755,62 +815,64 @@ export class ShapeManager {
                         rect.x(constrainedX);
                         rect.y(constrainedY);
                     }
-                } else {
-                    const canvasBounds = this.boundsService.getCanvasBounds();
-                    const zoom = this.getZoomScale();
-                    const effectiveBounds = {
-                        x: canvasBounds.x,
-                        y: canvasBounds.y,
-                        width: canvasBounds.width / zoom,
-                        height: canvasBounds.height / zoom,
-                    };
-
-                    const x = rect.x();
-                    const y = rect.y();
-                    const shapeWidth = rect.width() * rect.scaleX();
-                    const shapeHeight = rect.height() * rect.scaleY();
-                    const maxX = effectiveBounds.x + effectiveBounds.width - shapeWidth;
-                    const maxY = effectiveBounds.y + effectiveBounds.height - shapeHeight;
-
-                    const isOutside = x < effectiveBounds.x || y < effectiveBounds.y || x > maxX || y > maxY;
-
-                    if (isOutside) {
-                        const constrainedX = Math.max(effectiveBounds.x, Math.min(x, maxX));
-                        const constrainedY = Math.max(effectiveBounds.y, Math.min(y, maxY));
-                        rect.x(constrainedX);
-                        rect.y(constrainedY);
-                    }
                 }
+                // Root shapes (no parent) have no constraints - they can exist anywhere
             });
 
-            // Re-add dragend handler
+            // dragend handler - finalize position and sync to store
             rect.on('dragend', () => {
                 let newX = rect.x();
                 let newY = rect.y();
 
-                // CRITICAL: Ensure final position is snapped to grid
-                // dragBoundFunc should handle this during drag, but we snap here as guarantee
-                if (this.snapEnabled) {
-                    const snappedX = Math.round(newX / this.gridSize) * this.gridSize;
-                    const snappedY = Math.round(newY / this.gridSize) * this.gridSize;
+                // Enforce parent bounds constraint
+                if (this.boundsService) {
+                    const parentBounds = this.boundsService.getParentBounds(shapeId);
+                    if (parentBounds) {
+                        const shapeWidth = rect.width() * rect.scaleX();
+                        const shapeHeight = rect.height() * rect.scaleY();
 
-                    // Only update Konva node if snapping changed position
-                    if (snappedX !== newX || snappedY !== newY) {
-                        console.log('[ShapeManager] reinstantiated dragend snap correction:', {
-                            shapeId: shapeData.id,
-                            before: { x: newX, y: newY },
-                            after: { x: snappedX, y: snappedY },
-                        });
-                        newX = snappedX;
-                        newY = snappedY;
-                        rect.x(newX);
-                        rect.y(newY);
+                        const minX = parentBounds.x;
+                        const minY = parentBounds.y;
+                        const maxX = parentBounds.x + parentBounds.width - shapeWidth;
+                        const maxY = parentBounds.y + parentBounds.height - shapeHeight;
+
+                        newX = Math.max(minX, Math.min(newX, maxX));
+                        newY = Math.max(minY, Math.min(newY, maxY));
                     }
                 }
 
-                // Update store
+                // Apply grid snapping
+                if (this.snapEnabled) {
+                    newX = Math.round(newX / this.gridSize) * this.gridSize;
+                    newY = Math.round(newY / this.gridSize) * this.gridSize;
+
+                    // Re-constrain after snapping
+                    if (this.boundsService) {
+                        const parentBounds = this.boundsService.getParentBounds(shapeId);
+                        if (parentBounds) {
+                            const shapeWidth = rect.width() * rect.scaleX();
+                            const shapeHeight = rect.height() * rect.scaleY();
+
+                            const minX = parentBounds.x;
+                            const minY = parentBounds.y;
+                            const maxX = parentBounds.x + parentBounds.width - shapeWidth;
+                            const maxY = parentBounds.y + parentBounds.height - shapeHeight;
+
+                            newX = Math.max(minX, Math.min(newX, maxX));
+                            newY = Math.max(minY, Math.min(newY, maxY));
+                        }
+                    }
+                }
+
+                // Update Konva node position if changed
+                if (newX !== rect.x() || newY !== rect.y()) {
+                    rect.x(newX);
+                    rect.y(newY);
+                }
+
+                // Sync to store (source of truth)
                 if (this.store) {
-                    this.store.updateShape(shapeData.id, { x: newX, y: newY });
+                    this.store.updateShape(shapeId, { x: newX, y: newY });
                 }
             });
 
@@ -838,7 +900,6 @@ export class ShapeManager {
         }
 
         // Note: Selection state is preserved in SelectionManager
-        // The selectedId variable was captured for logging purposes only
         console.log('[ShapeManager] Selection preserved:', selectedId);
 
         // Redraw all affected layers
@@ -848,6 +909,9 @@ export class ShapeManager {
         });
 
         console.log(`[ShapeManager] Reinstantiation complete. ${sortedShapes.length} shapes recreated.`);
+
+        // Notify completion (for hiding loading overlay)
+        options?.onComplete?.();
     }
 
     // ==================== Area Methods (Unified Shape/Area Model) ====================

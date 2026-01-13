@@ -49,13 +49,54 @@ export interface SelectionDebugState {
 
 // ==================== Shape Debug State ====================
 
+/**
+ * Coordinate info for a shape in different coordinate systems
+ */
+export interface ShapeCoordinateInfo {
+  // World/Local coordinates (stored in GridStateStore, used for bounds checking)
+  world: { x: number; y: number };
+  // Screen coordinates (world * zoom + pan) - where shape appears on screen
+  screen: { x: number; y: number };
+}
+
+/**
+ * Size info for a shape in different coordinate systems
+ */
+export interface ShapeSizeInfo {
+  // World/Local size (stored in GridStateStore)
+  world: { width: number; height: number };
+  // Screen size (world * zoom) - visual size on screen
+  screen: { width: number; height: number };
+}
+
+/**
+ * Parent bounds info for child shapes
+ */
+export interface ParentBoundsInfo {
+  // Parent's world bounds
+  world: { x: number; y: number; width: number; height: number };
+  // Valid range for child's top-left corner (accounting for child size)
+  validRange: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  };
+}
+
 export interface ShapeDebugInfo {
   id: string;
   label: string;
   layerId: string;
   parentShapeId: string | null;
+  // Comprehensive coordinate info
+  coordinates: ShapeCoordinateInfo;
+  size: ShapeSizeInfo;
+  // Parent bounds (for child shapes only)
+  parentBounds: ParentBoundsInfo | null;
+  // Legacy position/size for backwards compatibility
   position: { x: number; y: number };
-  size: { width: number; height: number };
+  dimensions: { width: number; height: number };
   // Konva node runtime state (critical for debugging)
   draggable: boolean;
   listening: boolean;

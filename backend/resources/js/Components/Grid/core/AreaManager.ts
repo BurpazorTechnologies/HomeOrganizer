@@ -132,6 +132,44 @@ export class AreaManager {
   }
 
   /**
+   * Create a child area within an existing parent area
+   * This is called when loading child areas from persistence
+   */
+  createChildArea(
+    areaId: string,
+    type: string,
+    shapeId: string,
+    layerId: string,
+    parentId: string,
+    label?: string
+  ): void {
+    if (!this._store) return;
+
+    // Get parent area to determine depth
+    const parentArea = this._store.getArea(parentId);
+    const depth = parentArea ? parentArea.depth + 1 : 1;
+
+    const area: AreaState = {
+      id: areaId,
+      label: label || `Area ${areaId}`,
+      type: type as AreaState['type'],
+      shapeId,
+      layerId,
+      parentId,
+      childIds: [],
+      depth,
+    };
+
+    this._store.addArea(area);
+
+    // Update parent's childIds
+    if (parentArea) {
+      const updatedChildIds = [...parentArea.childIds, areaId];
+      this._store.updateArea(parentId, { childIds: updatedChildIds });
+    }
+  }
+
+  /**
    * Serialize area hierarchy for persistence
    * Returns data matching GridPersistenceData.areaHierarchy structure
    */

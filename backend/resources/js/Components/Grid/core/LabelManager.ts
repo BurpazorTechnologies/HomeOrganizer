@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import type { LayerManager } from '@/Components/Grid/core/LayerManager';
+import { GRID_CONSTANTS } from '@/Components/Grid/types/constants';
 
 /**
  * LabelManager
@@ -9,6 +10,8 @@ import type { LayerManager } from '@/Components/Grid/core/LayerManager';
  *
  * Each shape's label is placed on the konvaLabelLayer of its parent layer,
  * ensuring proper opacity handling when layers become inactive.
+ *
+ * Font sizes are responsive to shape height with min/max constraints for readability.
  */
 export class LabelManager {
     private layerManager: LayerManager;
@@ -18,6 +21,20 @@ export class LabelManager {
 
     constructor(layerManager: LayerManager) {
         this.layerManager = layerManager;
+    }
+
+    /**
+     * Calculate responsive font size based on shape height
+     * Returns a font size that scales with shape height but stays within readable bounds
+     */
+    private calculateResponsiveFontSize(shapeHeight: number): number {
+        const { LABEL_MIN_FONT_SIZE, LABEL_MAX_FONT_SIZE, LABEL_HEIGHT_RATIO } = GRID_CONSTANTS;
+
+        // Calculate font size as percentage of shape height
+        const calculatedSize = Math.round(shapeHeight * LABEL_HEIGHT_RATIO);
+
+        // Clamp between min and max for readability
+        return Math.max(LABEL_MIN_FONT_SIZE, Math.min(LABEL_MAX_FONT_SIZE, calculatedSize));
     }
 
     /**
@@ -50,11 +67,15 @@ export class LabelManager {
         dimensions: { x: number; y: number; width: number; height: number },
         layerId?: string
     ): void {
-        // Don't overwrite area name labels
+        // Don't overwrite area name labels - but update font size and position responsively
         if (this.labelTypes.get(shapeId) === 'areaName') {
             const label = this.labels.get(shapeId);
             if (label) {
-                // Just update position (keep the area name text)
+                // Update font size responsively based on new shape height
+                const fontSize = this.calculateResponsiveFontSize(dimensions.height);
+                label.fontSize(fontSize);
+
+                // Recalculate position after font size change
                 const labelX = dimensions.x + dimensions.width / 2 - label.width() / 2;
                 const labelY = dimensions.y + dimensions.height / 2 - label.height() / 2;
                 label.position({ x: labelX, y: labelY });
@@ -114,9 +135,11 @@ export class LabelManager {
 
     /**
      * Update label to show area name (centered on shape)
+     * Font size scales responsively with shape height (min 12px, max 48px)
+     *
      * @param shapeId - The shape ID
      * @param areaName - The area name to display
-     * @param dimensions - Shape dimensions for positioning
+     * @param dimensions - Shape dimensions for positioning and font scaling
      * @param layerId - Optional layer ID (defaults to current layer)
      */
     updateAreaNameLabel(
@@ -138,14 +161,17 @@ export class LabelManager {
             return;
         }
 
+        // Calculate responsive font size based on shape height
+        const fontSize = this.calculateResponsiveFontSize(dimensions.height);
+
         let label = this.labels.get(shapeId);
 
         if (!label) {
-            // Create new label
+            // Create new label with responsive font size
             label = new Konva.Text({
                 id: `label_${shapeId}`,
                 text: areaName,
-                fontSize: 16,
+                fontSize: fontSize,
                 fontFamily: 'Arial, sans-serif',
                 fontStyle: 'bold',
                 fill: '#1f2937', // gray-800
@@ -158,14 +184,14 @@ export class LabelManager {
             this.labelLayerIds.set(shapeId, targetLayerId);
             labelLayer.add(label);
         } else {
-            // Update existing label to area name
+            // Update existing label with responsive font size
             label.text(areaName);
-            label.fontSize(16);
+            label.fontSize(fontSize);
             label.fontStyle('bold');
             label.fill('#1f2937');
         }
 
-        // Draw first to ensure text is measured
+        // Draw first to ensure text is measured with new font size
         labelLayer.batchDraw();
 
         // Position label at center of shape (after text measurement)

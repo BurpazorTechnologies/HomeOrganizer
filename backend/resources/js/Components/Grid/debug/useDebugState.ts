@@ -237,22 +237,80 @@ function buildSelectionState(registry: ManagerRegistry): SelectionDebugState {
 function buildShapesState(registry: ManagerRegistry): ShapeDebugInfo[] {
   const shapeManager = registry.shapeManager;
   const store = registry.store;
+  const stage = registry.stage;
 
   if (!shapeManager) return [];
 
   const shapes = shapeManager.getAllShapes?.() ?? [];
 
+  // Get viewport info for coordinate transformation
+  const stagePos = stage?.position?.() ?? { x: 0, y: 0 };
+  const stageScale = stage?.scale?.() ?? { x: 1, y: 1 };
+  const zoom = stageScale.x;
+  const panX = stagePos.x;
+  const panY = stagePos.y;
+
   return shapes.map((shape): ShapeDebugInfo => {
     const node = shapeManager.getShapeNode?.(shape.id);
     const storeShape = store?.getShape?.(shape.id);
+
+    // World coordinates (from store - these are the "real" coordinates used for bounds)
+    const worldX = shape.x;
+    const worldY = shape.y;
+    const worldWidth = shape.width;
+    const worldHeight = shape.height;
+
+    // Screen coordinates: screen = (world * zoom) + pan
+    const screenX = Math.round((worldX * zoom) + panX);
+    const screenY = Math.round((worldY * zoom) + panY);
+    const screenWidth = Math.round(worldWidth * zoom);
+    const screenHeight = Math.round(worldHeight * zoom);
+
+    // Parent bounds info (for child shapes)
+    let parentBounds: ShapeDebugInfo['parentBounds'] = null;
+    const parentShapeId = storeShape?.parentShapeId;
+    if (parentShapeId && store) {
+      const parentShape = store.getShape(parentShapeId);
+      if (parentShape) {
+        const parentWorld = {
+          x: parentShape.x,
+          y: parentShape.y,
+          width: parentShape.width,
+          height: parentShape.height,
+        };
+        // Valid range for this child's top-left corner
+        const validRange = {
+          minX: parentWorld.x,
+          maxX: parentWorld.x + parentWorld.width - worldWidth,
+          minY: parentWorld.y,
+          maxY: parentWorld.y + parentWorld.height - worldHeight,
+        };
+        parentBounds = {
+          world: parentWorld,
+          validRange,
+        };
+      }
+    }
 
     return {
       id: shape.id,
       label: shape.label || '',
       layerId: storeShape?.layerId ?? '',
-      parentShapeId: storeShape?.parentShapeId ?? null,
-      position: { x: shape.x, y: shape.y },
-      size: { width: shape.width, height: shape.height },
+      parentShapeId: parentShapeId ?? null,
+      // Comprehensive coordinate info
+      coordinates: {
+        world: { x: worldX, y: worldY },
+        screen: { x: screenX, y: screenY },
+      },
+      size: {
+        world: { width: worldWidth, height: worldHeight },
+        screen: { width: screenWidth, height: screenHeight },
+      },
+      // Parent bounds for child shapes
+      parentBounds,
+      // Legacy position/size for backwards compatibility
+      position: { x: worldX, y: worldY },
+      dimensions: { width: worldWidth, height: worldHeight },
       // Konva node runtime state
       draggable: node?.draggable?.() ?? false,
       listening: node?.listening?.() ?? false,

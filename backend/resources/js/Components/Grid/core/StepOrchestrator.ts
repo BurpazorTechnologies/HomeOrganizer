@@ -9,10 +9,8 @@
  * - Subscribe to STEP_INFO_CHANGED via EventBus for step updates
  */
 
-import type Konva from 'konva';
 import type {
   ClickContext,
-  ClickTarget,
   StepInfo,
   ManagerInstances,
   StepConfiguration,
@@ -125,26 +123,7 @@ export class StepOrchestrator {
   }
 
   /**
-   * Handle click events - delegate to handler with config + state
-   * @deprecated Use handleClickFromEvent instead - kept for backwards compatibility
-   */
-  handleClick(event: Konva.KonvaEventObject<MouseEvent>, stage: Konva.Stage): void {
-    const context = this.buildClickContext(event, stage);
-
-    // Delegate to step handler with configuration
-    StepHandlers.handleClick(
-      context,
-      this.currentStepConfig,
-      this.currentState,
-      this.managers
-    );
-
-    this.notifyStepChange();
-  }
-
-  /**
    * Handle click events from EventBus - receives pre-extracted data instead of raw Konva event
-   * This is the new event-driven approach used by EventManager
    */
   handleClickFromEvent(
     worldPosition: { x: number; y: number },
@@ -167,46 +146,6 @@ export class StepOrchestrator {
     );
 
     this.notifyStepChange();
-  }
-
-  /**
-   * Build click context from Konva event
-   */
-  private buildClickContext(
-    event: Konva.KonvaEventObject<MouseEvent>,
-    stage: Konva.Stage
-  ): ClickContext {
-    const pointer = stage.getPointerPosition();
-    const target = event.target;
-
-    let clickTarget: ClickTarget = 'other';
-    let shapeId: string | undefined;
-
-    if (target === stage) {
-      clickTarget = 'canvas';
-    } else if (target.getClassName() === 'Rect') {
-      clickTarget = 'shape';
-      shapeId = target.id();
-    }
-
-    // Convert screen coordinates to world coordinates (accounting for pan/zoom)
-    // getPointerPosition() returns screen coordinates, but parentBounds are in world coordinates
-    let worldPosition = { x: 0, y: 0 };
-    if (pointer) {
-      const scale = stage.scaleX() || 1;
-      const stagePos = stage.position();
-      worldPosition = {
-        x: (pointer.x - stagePos.x) / scale,
-        y: (pointer.y - stagePos.y) / scale,
-      };
-    }
-
-    return {
-      target: clickTarget,
-      position: worldPosition,
-      shapeId,
-      event,
-    };
   }
 
   /**

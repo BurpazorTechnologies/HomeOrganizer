@@ -147,8 +147,7 @@ export class SelectionManager {
       this.store.select(shapeId, layerId, false);
     }
 
-    // Apply selection visuals
-    this.shapeManager?.selectShape(shapeId);
+    // Apply selection visuals (attach transformer)
     const node = this.shapeManager?.getShapeNode(shapeId);
     if (node) {
       this.transformManager?.attachTo(node);
@@ -181,8 +180,7 @@ export class SelectionManager {
       this.store.select(shapeId, layerId, true); // isParent = true
     }
 
-    // Deselect in shape manager and detach transformer
-    this.shapeManager?.deselectShape();
+    // Detach transformer (parent selection doesn't have transformer)
     this.transformManager?.detach();
 
     // Note: SELECTION_CHANGED event is emitted by store.select() above
@@ -199,7 +197,6 @@ export class SelectionManager {
       this.store.deselect();
     }
 
-    this.shapeManager?.deselectShape();
     this.transformManager?.detach();
 
     // Note: SELECTION_CLEARED event is emitted by store.deselect() above
