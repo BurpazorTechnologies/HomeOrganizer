@@ -108,4 +108,104 @@ export class AreaManager {
   clear(): void {
     // Areas are cleared when store.clear() is called
   }
+
+  /**
+   * Create a home area (the root of the area hierarchy)
+   * This is called when creating the first shape in Step 1
+   */
+  createHomeArea(areaId: string, shapeId: string, layerId: string): void {
+    if (!this._store) return;
+
+    const area: AreaState = {
+      id: areaId,
+      label: 'Home Area',
+      type: 'home',
+      shapeId,
+      layerId,
+      parentId: null,
+      childIds: [],
+      depth: 0,
+    };
+
+    this._store.addArea(area);
+    this._store.setRootAreaId(areaId);
+  }
+
+  /**
+   * Serialize area hierarchy for persistence
+   * Returns data matching GridPersistenceData.areaHierarchy structure
+   */
+  serialize(): { areas: Array<{
+    id: string;
+    type: string;
+    label: string;
+    shapeId: string;
+    layerId: string;
+    parentId: string | null;
+    childIds: string[];
+    depth: number;
+    metadata: Record<string, any>;
+  }>; rootAreaId: string | null } {
+    const areas = this.getAllAreas().map(area => ({
+      id: area.id,
+      type: area.type,
+      label: area.label,
+      shapeId: area.shapeId,
+      layerId: area.layerId,
+      parentId: area.parentId,
+      childIds: [...area.childIds],
+      depth: area.depth,
+      metadata: area.metadata ?? {},
+    }));
+
+    return {
+      areas,
+      rootAreaId: this.getRootAreaId(),
+    };
+  }
+
+  /**
+   * Deserialize area hierarchy from persistence
+   * Restores areas from saved data structure
+   *
+   * @param data - The saved areaHierarchy data
+   * @param _shapeManager - ShapeManager reference (unused in stub, kept for API compatibility)
+   */
+  deserialize(
+    data: { areas: Array<{
+      id: string;
+      type: string;
+      label: string;
+      shapeId: string;
+      layerId: string;
+      parentId: string | null;
+      childIds: string[];
+      depth: number;
+      metadata?: Record<string, any>;
+    }>; rootAreaId: string | null },
+    _shapeManager: any
+  ): void {
+    if (!this._store || !data) return;
+
+    // Restore each area
+    for (const areaData of data.areas) {
+      const area: AreaState = {
+        id: areaData.id,
+        type: areaData.type as AreaState['type'],
+        label: areaData.label,
+        shapeId: areaData.shapeId,
+        layerId: areaData.layerId,
+        parentId: areaData.parentId,
+        childIds: [...areaData.childIds],
+        depth: areaData.depth,
+        metadata: areaData.metadata,
+      };
+      this._store.addArea(area);
+    }
+
+    // Restore root area ID
+    if (data.rootAreaId) {
+      this._store.setRootAreaId(data.rootAreaId);
+    }
+  }
 }

@@ -139,8 +139,8 @@ export function createBoundsService(
     // ==================== Constraint Operations ====================
 
     /**
-     * Constrain a drag position within parent bounds (or canvas)
-     * This replaces the static dragBoundFunc closure logic
+     * Constrain a drag position within parent bounds
+     * Root shapes (no parent) are NOT constrained - they can exist anywhere in infinite canvas
      *
      * @param shapeId - The shape being dragged
      * @param position - The proposed new position
@@ -152,12 +152,20 @@ export function createBoundsService(
       position: Position,
       shapeSize: Size
     ): Position {
-      // Get effective bounds (parent or canvas)
+      // Get parent bounds - root shapes have no parent
       const parentBounds = this.getParentBounds(shapeId);
-      const effectiveBounds = parentBounds || getEffectiveCanvasBounds();
 
-      // Constrain position within bounds
-      let result = constrainPositionToBounds(position, shapeSize, effectiveBounds);
+      // ROOT SHAPES: No constraint bounds - they can exist anywhere in infinite canvas
+      // Only apply grid snapping, no position constraints
+      if (!parentBounds) {
+        if (config.getSnapEnabled()) {
+          return applyGridSnapToPosition(position, config.getGridSize(), true);
+        }
+        return position;
+      }
+
+      // CHILD SHAPES: Constrain within parent bounds
+      let result = constrainPositionToBounds(position, shapeSize, parentBounds);
 
       // Apply grid snapping
       if (config.getSnapEnabled()) {
@@ -165,15 +173,15 @@ export function createBoundsService(
 
         // CRITICAL: Re-constrain after snapping!
         // Grid snapping can push the position outside bounds (e.g., snap rounds up past edge)
-        result = constrainPositionToBounds(result, shapeSize, effectiveBounds);
+        result = constrainPositionToBounds(result, shapeSize, parentBounds);
       }
 
       return result;
     },
 
     /**
-     * Constrain a resize operation within parent bounds (or canvas)
-     * This replaces the static boundBoxFunc logic in TransformManager
+     * Constrain a resize operation within parent bounds
+     * Root shapes (no parent) are NOT constrained - only minimum size applies
      *
      * @param shapeId - The shape being resized
      * @param newBounds - The proposed new bounds
@@ -185,18 +193,36 @@ export function createBoundsService(
       newBounds: Bounds,
       minSize: Size = { width: 20, height: 20 }
     ): Bounds {
-      // Get effective bounds (parent or canvas)
+      // Get parent bounds - root shapes have no parent
       const parentBounds = this.getParentBounds(shapeId);
-      const effectiveBounds = parentBounds || getEffectiveCanvasBounds();
 
-      // Constrain resize within bounds
-      let result = constrainResizeToBounds(newBounds, effectiveBounds, minSize);
+      // ROOT SHAPES: No constraint bounds - only enforce minimum size and grid snap
+      if (!parentBounds) {
+        let result = { ...newBounds };
+
+        // Enforce minimum size
+        result.width = Math.max(result.width, minSize.width);
+        result.height = Math.max(result.height, minSize.height);
+
+        // Apply grid snapping
+        if (config.getSnapEnabled()) {
+          result = applyGridSnapToBounds(result, config.getGridSize(), true);
+          // Re-enforce minimum size after snapping (snap might reduce below min)
+          result.width = Math.max(result.width, minSize.width);
+          result.height = Math.max(result.height, minSize.height);
+        }
+
+        return result;
+      }
+
+      // CHILD SHAPES: Constrain resize within parent bounds
+      let result = constrainResizeToBounds(newBounds, parentBounds, minSize);
 
       // Apply grid snapping
       if (config.getSnapEnabled()) {
         result = applyGridSnapToBounds(result, config.getGridSize(), true);
         // Re-constrain after snapping - snap can push outside bounds
-        result = constrainResizeToBounds(result, effectiveBounds, minSize);
+        result = constrainResizeToBounds(result, parentBounds, minSize);
       }
 
       return result;
@@ -206,17 +232,21 @@ export function createBoundsService(
 
     /**
      * Check if a position is valid for shape creation
+     * Root shapes can be created anywhere in infinite canvas
      *
      * @param position - The position to validate
      * @param parentShapeId - The parent shape ID (null for root shapes)
      */
     isPositionValid(position: Position, parentShapeId: string | null): boolean {
-      if (parentShapeId) {
-        const parentBounds = store.getShapeBounds(parentShapeId);
-        if (!parentBounds) return false;
-        return isPositionWithinBounds(position, parentBounds);
+      // ROOT SHAPES: Any position is valid in infinite canvas
+      if (!parentShapeId) {
+        return true;
       }
-      return isPositionWithinBounds(position, getEffectiveCanvasBounds());
+
+      // CHILD SHAPES: Must be within parent bounds
+      const parentBounds = store.getShapeBounds(parentShapeId);
+      if (!parentBounds) return false;
+      return isPositionWithinBounds(position, parentBounds);
     },
 
     /**
@@ -266,33 +296,6 @@ export function createBoundsService(
       canvasBounds = { x: 0, y: 0, width, height };
     },
   };
-
-  // ==================== Private Helpers ====================
-
-  /**
-   * Get effective canvas bounds for root shapes (shapes without a parent)
-   *
-   * IMPORTANT: Root shapes should NOT be constrained by zoom.
-   * Zoom is a viewport/rendering concern, not a world-space constraint.
-   *
-   * Root shapes can exist anywhere in world space. The canvas bounds
-   * represent the minimum visible area, but shapes can be positioned
-   * outside this area and scrolled/panned to.
-   *
-   * Previous bug: Dividing by zoom would shrink the constraint area
-   * when zooming in, causing shapes to have "limited boundary".
-   */
-  function getEffectiveCanvasBounds(): Bounds {
-    // Return raw canvas bounds - no zoom adjustment
-    // Root shapes are constrained to the stage dimensions in world space
-    // Zoom only affects what portion of world space is visible, not where shapes can exist
-    return {
-      x: 0,
-      y: 0,
-      width: canvasBounds.width,
-      height: canvasBounds.height,
-    };
-  }
 
   return service;
 }

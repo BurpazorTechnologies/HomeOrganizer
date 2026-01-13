@@ -127,7 +127,7 @@ function initializeCanvas(): void {
     // Restore state from persistence
     registry.restoreState().then((restored) => {
         if (restored) {
-            focusOnSelectedShape();
+            recenterToLayer();
         }
         emitStepChange();
         emitSavedDataChange();
