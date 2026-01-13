@@ -339,6 +339,36 @@ export class ManagerRegistry {
       // External callback
       this._callbacks.onZoomChange?.(zoom);
 
+      // CRITICAL: Re-snap pan position to new screenGridSize after zoom change
+      // When zoom changes, the screenGridSize changes (gridSize * zoom)
+      // Pan must be re-snapped to maintain grid alignment
+      if (this._store && this._stage) {
+        const gridSize = this._store.getGridConfig().gridSize;
+        const screenGridSize = gridSize * zoom;
+        const currentPan = this._stage.position();
+        const snappedPan = {
+          x: Math.round(currentPan.x / screenGridSize) * screenGridSize,
+          y: Math.round(currentPan.y / screenGridSize) * screenGridSize,
+        };
+
+        // DEBUG: Log zoom snap values
+        console.log('[ZOOM SNAP] Pan re-snap on zoom change:', {
+          zoom,
+          gridSize,
+          screenGridSize,
+          currentPan,
+          snappedPan,
+          changed: snappedPan.x !== currentPan.x || snappedPan.y !== currentPan.y,
+        });
+
+        // Only update if position actually changed (avoid unnecessary redraws)
+        if (snappedPan.x !== currentPan.x || snappedPan.y !== currentPan.y) {
+          this._stage.position(snappedPan);
+          this._store.setPan(snappedPan);
+          // Note: setPan emits PAN_CHANGED which triggers grid redraw
+        }
+      }
+
       // Redraw grid
       this._gridManager?.redrawGrid();
 
@@ -353,6 +383,12 @@ export class ManagerRegistry {
 
       // Call zoom end callback - use for reinstantiation
       this._callbacks.onZoomEnd?.();
+    });
+
+    // Subscribe to PAN_CHANGED events
+    this._eventBus.on('PAN_CHANGED', () => {
+      // Redraw grid to align with new viewport position
+      this._gridManager?.redrawGrid();
     });
 
     // Subscribe to STEP_INFO_CHANGED events

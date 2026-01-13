@@ -166,11 +166,17 @@ export class ZoomManager {
     const offsetX = stageCenterX - shapeCenterX * currentZoom;
     const offsetY = stageCenterY - shapeCenterY * currentZoom;
 
-    // Update store with new pan position
-    this.store.setPan({ x: offsetX, y: offsetY });
+    // Snap pan position to screenGridSize for grid alignment
+    const gridSize = this.store.getGridConfig().gridSize;
+    const screenGridSize = gridSize * currentZoom;
+    const snappedOffsetX = Math.round(offsetX / screenGridSize) * screenGridSize;
+    const snappedOffsetY = Math.round(offsetY / screenGridSize) * screenGridSize;
 
-    // Apply the position to stage
-    this.stage.position({ x: offsetX, y: offsetY });
+    // Update store with snapped pan position
+    this.store.setPan({ x: snappedOffsetX, y: snappedOffsetY });
+
+    // Apply the snapped position to stage
+    this.stage.position({ x: snappedOffsetX, y: snappedOffsetY });
     this.stage.batchDraw();
   }
 

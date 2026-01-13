@@ -237,8 +237,27 @@ export class ShapeManager {
 
         // Add drag end handler to update shape data and store
         rect.on('dragend', () => {
-            const newX = rect.x();
-            const newY = rect.y();
+            let newX = rect.x();
+            let newY = rect.y();
+
+            // CRITICAL: Ensure final position is snapped to grid
+            // dragBoundFunc should handle this during drag, but we snap here as guarantee
+            if (this.snapEnabled) {
+                const snappedX = Math.round(newX / this.gridSize) * this.gridSize;
+                const snappedY = Math.round(newY / this.gridSize) * this.gridSize;
+
+                // Only update Konva node if snapping changed position
+                if (snappedX !== newX || snappedY !== newY) {
+                    console.log('[ShapeManager] dragend snap correction:', {
+                        before: { x: newX, y: newY },
+                        after: { x: snappedX, y: snappedY },
+                    });
+                    newX = snappedX;
+                    newY = snappedY;
+                    rect.x(newX);
+                    rect.y(newY);
+                }
+            }
 
             console.log('[ShapeManager] dragend', {
                 shapeId: id,
@@ -766,8 +785,28 @@ export class ShapeManager {
 
             // Re-add dragend handler
             rect.on('dragend', () => {
-                const newX = rect.x();
-                const newY = rect.y();
+                let newX = rect.x();
+                let newY = rect.y();
+
+                // CRITICAL: Ensure final position is snapped to grid
+                // dragBoundFunc should handle this during drag, but we snap here as guarantee
+                if (this.snapEnabled) {
+                    const snappedX = Math.round(newX / this.gridSize) * this.gridSize;
+                    const snappedY = Math.round(newY / this.gridSize) * this.gridSize;
+
+                    // Only update Konva node if snapping changed position
+                    if (snappedX !== newX || snappedY !== newY) {
+                        console.log('[ShapeManager] reinstantiated dragend snap correction:', {
+                            shapeId: shapeData.id,
+                            before: { x: newX, y: newY },
+                            after: { x: snappedX, y: snappedY },
+                        });
+                        newX = snappedX;
+                        newY = snappedY;
+                        rect.x(newX);
+                        rect.y(newY);
+                    }
+                }
 
                 // Update store
                 if (this.store) {

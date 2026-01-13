@@ -155,6 +155,10 @@ export class EventManager {
       const target = e.target;
 
       if (target === this.stage) {
+        // Don't allow panning if another action is in progress
+        if (!this.store.isActionAllowed('panning')) {
+          return;
+        }
         // Pan started - acquire lock
         this.store.acquireActionLock('panning', 'stage');
 
@@ -193,15 +197,43 @@ export class EventManager {
           return;
         }
 
-        const newPan = this.stage.position();
+        const rawPan = this.stage.position();
         const isPanMode = this.externalCallbacks.getIsPanMode();
+
+        // Snap pan position to screen gridSize multiples for perfect grid alignment
+        // CRITICAL: stage.position() is in SCREEN coordinates, not world coordinates
+        // At zoom 2.0 with world gridSize=20: screen gridSize = 40px
+        // We must snap to screen gridSize to align with visible grid lines
+        const gridSize = this.store.getGridConfig().gridSize;
+        const zoomScale = this.stage.scaleX();
+        const screenGridSize = gridSize * zoomScale;
+        const snappedPan = {
+          x: Math.round(rawPan.x / screenGridSize) * screenGridSize,
+          y: Math.round(rawPan.y / screenGridSize) * screenGridSize,
+        };
+
+        // DEBUG: Log pan snapping values
+        console.log('[PAN SNAP] Stage drag:', {
+          rawPan,
+          gridSize,
+          zoomScale,
+          screenGridSize,
+          snappedPan,
+        });
+
+        // Apply snapped position to stage (visual alignment)
+        this.stage.position(snappedPan);
+        this.stage.batchDraw();
+
+        // Sync snapped pan position to store (triggers PAN_CHANGED event -> grid redraw)
+        this.store.setPan(snappedPan);
 
         // Emit pan orchestration request event
         this.eventBus.emit({
           type: 'PAN_ORCHESTRATION_REQUESTED',
           payload: {
             type: 'pan_end',
-            panPosition: { x: newPan.x, y: newPan.y },
+            panPosition: { x: snappedPan.x, y: snappedPan.y },
             stayInPanMode: isPanMode,
           },
         });
@@ -210,7 +242,7 @@ export class EventManager {
         this.eventBus.emit({
           type: 'PAN_ENDED',
           payload: {
-            pan: { x: newPan.x, y: newPan.y },
+            pan: { x: snappedPan.x, y: snappedPan.y },
           },
         });
 
@@ -336,14 +368,31 @@ export class EventManager {
     // Restore stage draggable state
     this.stage.draggable(this.middleMouseState.previousPanModeState);
 
-    const newPan = this.stage.position();
+    const rawPan = this.stage.position();
+
+    // Snap pan position to screen gridSize multiples for perfect grid alignment
+    // CRITICAL: stage.position() is in SCREEN coordinates, not world coordinates
+    const gridSize = this.store.getGridConfig().gridSize;
+    const zoomScale = this.stage.scaleX();
+    const screenGridSize = gridSize * zoomScale;
+    const snappedPan = {
+      x: Math.round(rawPan.x / screenGridSize) * screenGridSize,
+      y: Math.round(rawPan.y / screenGridSize) * screenGridSize,
+    };
+
+    // Apply snapped position to stage (visual alignment)
+    this.stage.position(snappedPan);
+    this.stage.batchDraw();
+
+    // Sync snapped pan position to store (triggers PAN_CHANGED event -> grid redraw)
+    this.store.setPan(snappedPan);
 
     // Emit pan orchestration request event
     this.eventBus.emit({
       type: 'PAN_ORCHESTRATION_REQUESTED',
       payload: {
         type: 'pan_end',
-        panPosition: { x: newPan.x, y: newPan.y },
+        panPosition: { x: snappedPan.x, y: snappedPan.y },
         stayInPanMode: this.middleMouseState.previousPanModeState,
       },
     });
@@ -352,7 +401,7 @@ export class EventManager {
     this.eventBus.emit({
       type: 'PAN_ENDED',
       payload: {
-        pan: { x: newPan.x, y: newPan.y },
+        pan: { x: snappedPan.x, y: snappedPan.y },
       },
     });
 
@@ -375,6 +424,12 @@ export class EventManager {
 
     // When entering pan mode, acquire lock and emit event
     if (newValue === true && oldValue === false) {
+      // Don't allow pan mode if another action is in progress
+      if (!this.store.isActionAllowed('panning')) {
+        console.warn('[EventManager] Cannot enter pan mode - another action in progress');
+        this.externalCallbacks.setIsPanMode(false); // Reset toggle state
+        return;
+      }
       this.store.acquireActionLock('panning', 'pan-mode-toggle');
 
       // Emit pan started event
@@ -388,14 +443,31 @@ export class EventManager {
     }
     // When exiting pan mode via button toggle
     else if (newValue === false && oldValue === true) {
-      const currentPan = this.stage.position();
+      const rawPan = this.stage.position();
+
+      // Snap pan position to screen gridSize multiples for perfect grid alignment
+      // CRITICAL: stage.position() is in SCREEN coordinates, not world coordinates
+      const gridSize = this.store.getGridConfig().gridSize;
+      const zoomScale = this.stage.scaleX();
+      const screenGridSize = gridSize * zoomScale;
+      const snappedPan = {
+        x: Math.round(rawPan.x / screenGridSize) * screenGridSize,
+        y: Math.round(rawPan.y / screenGridSize) * screenGridSize,
+      };
+
+      // Apply snapped position to stage (visual alignment)
+      this.stage.position(snappedPan);
+      this.stage.batchDraw();
+
+      // Sync snapped pan position to store (triggers PAN_CHANGED event -> grid redraw)
+      this.store.setPan(snappedPan);
 
       // Emit pan orchestration request event for mode exit
       this.eventBus.emit({
         type: 'PAN_ORCHESTRATION_REQUESTED',
         payload: {
           type: 'pan_mode_exit',
-          panPosition: { x: currentPan.x, y: currentPan.y },
+          panPosition: { x: snappedPan.x, y: snappedPan.y },
           stayInPanMode: false,
         },
       });
@@ -404,7 +476,7 @@ export class EventManager {
       this.eventBus.emit({
         type: 'PAN_ENDED',
         payload: {
-          pan: { x: currentPan.x, y: currentPan.y },
+          pan: { x: snappedPan.x, y: snappedPan.y },
         },
       });
 

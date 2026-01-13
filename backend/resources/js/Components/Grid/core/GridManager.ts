@@ -7,9 +7,9 @@
  * Key change: Grid configuration is now read from GridStateStore (single source of truth).
  * Local state only maintains runtime-only values (clipBounds, Konva layer reference).
  *
- * Event-driven architecture (Phase 2):
- * - Subscribes to ZOOM_CHANGED, PAN_CHANGED events to auto-redraw
- * - Subscribes to GRID_CONFIG_CHANGED to respond to config updates
+ * Event-driven architecture:
+ * - Subscribes to GRID_CONFIG_CHANGED events to auto-redraw on config changes
+ * - ZOOM_CHANGED and PAN_CHANGED are handled by ManagerRegistry (centralized control)
  */
 
 import Konva from 'konva';
